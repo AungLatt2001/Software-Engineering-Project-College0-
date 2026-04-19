@@ -244,23 +244,10 @@ The login functionality was selected as the sample prototype because it is one o
 
 ## 7. Frontend Responsibilities
 
-The frontend is responsible for:
-- displaying system pages and layout
-- navigation between pages
-- collecting user input
-- validating forms at the interface level
-- sending requests to the backend
-- displaying returned information
-- showing loading, success, and error states
+The frontend is responsible for the user interface of College0, including page layout, navigation, forms, and user interaction.
+It collects user input, sends requests to the backend, and displays returned results such as success messages, errors, and page content.
 
-The frontend is not responsible for:
-- backend business logic
-- permanent data storage
-- database operations
-- authentication processing itself
-- AI computation itself
-
-These responsibilities belong to the backend and database layers.
+Business logic, database storage, authentication processing, and AI computation are handled by the backend and database layers.
 
 ## 8. Testing Note
 
