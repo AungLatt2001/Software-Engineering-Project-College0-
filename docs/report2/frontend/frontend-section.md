@@ -96,62 +96,9 @@ The login functionality was selected as the sample prototype because it is one o
 - Successful login and dashboard access
 - Authentication error message
 
-## 4. Frontend Use Cases
+## 4. Sequence Flow
 
-### 4.1 Use Case: User Login
-
-**Normal scenario**
-1. User opens the login screen.
-2. User enters a valid user ID and password.
-3. User clicks the Sign In button.
-4. Frontend sends the login request to the backend.
-5. Backend validates the credentials.
-6. Frontend receives a successful response.
-7. User is redirected to the correct dashboard.
-
-**Exceptional scenario**
-1. User enters an incorrect ID or password.
-2. Frontend sends the login request.
-3. Backend rejects the credentials.
-4. Frontend displays an error message.
-5. User stays on the login screen and tries again.
-
-### 4.2 Use Case: Submit Application
-
-**Normal scenario**
-1. Visitor opens the Apply page.
-2. Visitor fills in the application form.
-3. Visitor selects the desired role.
-4. Visitor enters GPA and optional statement.
-5. Visitor clicks Submit Application.
-6. Frontend validates the form.
-7. Application data is sent to the backend.
-8. Confirmation is displayed.
-
-**Exceptional scenario**
-1. Visitor leaves required fields empty or enters invalid data.
-2. Frontend validation fails or backend rejects the request.
-3. An error message is displayed.
-4. Visitor corrects the form and resubmits.
-
-### 4.3 Use Case: Ask AI Assistant
-
-**Normal scenario**
-1. User opens the AI Assistant page.
-2. User enters a question in the text area.
-3. User clicks Ask AI.
-4. Frontend sends the question to the backend.
-5. Backend processes the request and returns a response.
-6. Frontend displays the answer.
-
-**Exceptional scenario**
-1. User submits an empty question or the backend is unavailable.
-2. Frontend detects the issue or receives an error.
-3. An error message or loading failure is shown.
-
-## 5. Sequence Flow
-
-### 5.1 Login Sequence
+### 4.1 Login Sequence
 
 **User → Login Screen → Backend → Frontend → Dashboard**
 
@@ -161,7 +108,7 @@ The login functionality was selected as the sample prototype because it is one o
 4. Backend returns success or failure.
 5. Frontend shows an error or redirects to the dashboard.
 
-### 5.2 Application Sequence
+### 4.2 Application Sequence
 
 **Visitor → Apply Screen → Backend → Frontend**
 
@@ -171,7 +118,7 @@ The login functionality was selected as the sample prototype because it is one o
 4. Backend stores the application.
 5. Frontend displays confirmation or error.
 
-### 5.3 AI Assistant Sequence
+### 4.3 AI Assistant Sequence
 
 **User → AI Assistant Screen → Backend → Frontend**
 
@@ -181,9 +128,9 @@ The login functionality was selected as the sample prototype because it is one o
 4. Backend returns a response.
 5. Frontend displays the returned answer.
 
-## 6. Detailed Design – Frontend Pseudocode
+## 5. Detailed Design – Frontend Pseudocode
 
-### 6.1 handleLogin()
+### 5.1 handleLogin()
 
 **Input:** user ID, password  
 **Output:** dashboard page or error message
@@ -199,7 +146,7 @@ The login functionality was selected as the sample prototype because it is one o
 7. Else:
    - display login failure message
 
-### 6.2 handleApply()
+### 5.2 handleApply()
 
 **Input:** application form data  
 **Output:** success message or error message
@@ -214,7 +161,7 @@ The login functionality was selected as the sample prototype because it is one o
 7. Else:
    - display error message
 
-### 6.3 handleAskAI()
+### 5.3 handleAskAI()
 
 **Input:** user question  
 **Output:** response or error message
@@ -229,7 +176,7 @@ The login functionality was selected as the sample prototype because it is one o
 7. Else:
    - display error message
 
-### 6.4 loadDashboard()
+### 5.4 loadDashboard()
 
 **Input:** authenticated user role  
 **Output:** role-based dashboard content
@@ -242,21 +189,21 @@ The login functionality was selected as the sample prototype because it is one o
 5. Else:
    - show loading or error state
 
-## 7. Frontend Responsibilities
+## 6. Frontend Responsibilities
 
 The frontend is responsible for the user interface of College0, including page layout, navigation, forms, and user interaction.
 It collects user input, sends requests to the backend, and displays returned results such as success messages, errors, and page content.
 
 Business logic, database storage, authentication processing, and AI computation are handled by the backend and database layers.
 
-## 8. Testing Note
+## 7. Testing Note
 
 The frontend was tested locally with a temporary/mock backend in order to verify the interface, navigation, authentication flow, and interactive page behavior.
 
 Some pages depend on backend responses, so they may not fully display their final data without complete backend and database integration.  
 The prototype is therefore intended to demonstrate frontend structure and interaction flow rather than final production data.
 
-## 9. Frontend Contribution Summary
+## 8. Frontend Contribution Summary
 
 My contribution to College0 focuses on the frontend interface of the system.  
 I worked on the graphical layout, role-based page navigation, forms, and interactive user screens.
