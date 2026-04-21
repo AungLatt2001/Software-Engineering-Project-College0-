@@ -1,1 +1,133 @@
+6. Memos of Group Meetings and Possible Concerns of Teamwork 
 
+ 
+
+Meeting 1 
+ 
+
+Date: Sunday, March 22, 2026 
+
+Time: 12:00 PM 
+
+Platform: Discord (Study Lounge) 
+
+Project Phase: Phase I 
+
+Group Members (5): 
+
+Aung Latt 
+
+Karim Khalil 
+
+Zihad Chowdhury 
+
+Ferdosi Hossain 
+
+Kazi Mehzabin 
+
+ 
+
+Task Distribution (Phase I) 
+
+
+Introduction: Ferdosi Hossain 
+
+Use Case Model: Kazi Mehzabin 
+
+Specific Requirements & Supporting Information: Shared among Aung Latt, Zihad Chowdhury, and Karim Khalil 
+
+ 
+
+Discussion Summary: 
+
+This was the first meeting where the team discussed the overall project idea and structure. The goal was to understand the requirements and plan Phase I. 
+
+The team talked about the system design, including frontend, backend, database, and API. We also discussed the framework, tools, and resources we might use.Tasks were divided among members based on the report sections. 
+
+ 
+
+Decisions Made 
+
+The project idea and structure were finalized. 
+
+Work was divided among team members. 
+
+A general development approach was agreed on. 
+
+ 
+
+Concerns / Notes 
+
+Some parts of the system design were still general and needed more detail later. 
+
+Coordination between frontend, backend, and database would be important. 
+
+ 
+
+Meeting 2 
+
+ 
+
+Date: Monday, April 20, 2026 
+
+Time: 9:00 PM – 9:40 PM 
+
+Platform: Discord (Study Lounge) 
+
+Project Phase: Phase II 
+
+ 
+
+Task Distribution (Phase II) 
+
+Introduction & system overview: Zihad Chowdhury 
+
+Use cases (normal and exceptional scenarios, Petri nets): Ferdosi Hossain 
+
+E-R diagram (attributes and keys): Aung Latt 
+
+Detailed design + system screens: Karim Khalil 
+
+Meeting memos & teamwork section: Kazi Mehzabin 
+
+GitHub repository (Section 7): Whole group 
+
+ 
+
+ 
+
+Discussion Summary 
+
+ 
+
+The team met to organize Phase II and divide all report tasks. Each member was assigned a clear section. We also set up GitHub with separate branches so everyone can work independently. 
+
+The system design was discussed again, including backend, frontend, database, API, and AI chatbot. The plan is to build each part separately and then connect them. 
+
+ 
+
+Work Progress 
+
+Front-end work has started. Backend development is also in progress. Database design and backend structure are being planned. 
+
+The AI chatbot and API system were discussed, including how they will connect with the backend. 
+
+ 
+
+Decisions Made 
+
+Each member will work on their own GitHub branch. 
+
+Work will be done in parallel (frontend, backend, database). 
+
+API and chatbot will be part of the backend system. 
+
+ 
+
+Concerns / Notes 
+
+Frontend and backend must be well coordinated during integration. 
+
+AI chatbot and API design still need more detail. 
+
+Database design must match backend requirements. 
