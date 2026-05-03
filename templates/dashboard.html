@@ -2,18 +2,30 @@
 {% block content %}
 
 <div class="banner">
-  <h1>Welcome back, {{ user.name }}</h1>
-  <p>{{ user.user_id }} &middot; Student Portal</p>
+  <h1>Welcome back, {{ user.first_name }} {{ user.last_name }}</h1>
+  <p>#{{ user.user_id }} &middot; Student Portal &middot;
+    {% if user.status == 'suspended' %}<span style="color:#fca5a5">⚠ Account Suspended</span>
+    {% elif user.status == 'graduated' %}🎓 Graduated
+    {% else %}Active{% endif %}
+  </p>
 </div>
 
 <div class="stats-row">
   <div class="stat-card">
-    <div class="stat-label">GPA</div>
-    <div class="stat-value green">{{ "%.1f"|format(st.gpa) }}</div>
+    <div class="stat-label">Cumulative GPA</div>
+    <div class="stat-value green">{{ "%.3f"|format(st.cumulative_gpa) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Semester GPA</div>
+    <div class="stat-value green">{{ "%.3f"|format(st.semester_gpa) }}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Warnings</div>
-    <div class="stat-value {% if st.warnings > 0 %}" style="color:var(--orange)"{% else %}"{% endif %}>{{ st.warnings }}/3</div>
+    <div class="stat-value {% if user.warning_count > 0 %}" style="color:var(--orange)"{% else %}"{% endif %}>{{ user.warning_count }}/3</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Honors</div>
+    <div class="stat-value" style="color:#7c3aed">{{ st.honor_count }}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Enrolled</div>
@@ -23,15 +35,21 @@
   <div class="stat-card">
     <div class="stat-label">Completed</div>
     <div class="stat-value">{{ completed }}</div>
-    <div class="stat-sub">Courses with grades</div>
+    <div class="stat-sub">Courses</div>
   </div>
 </div>
+
+{% if st.fine_due > 0 %}
+<div class="alert alert-error" style="margin-bottom:20px">
+  ⚠ Outstanding fine: <strong>${{ "%.2f"|format(st.fine_due) }}</strong> — Contact the Registrar's office to resolve.
+</div>
+{% endif %}
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:680px">
   <a href="{{ url_for('my_courses') }}" style="text-decoration:none">
     <div class="col-card" style="cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'" onmouseout="this.style.boxShadow=''">
       <div class="col-card-title"><span class="icon">📚</span> My Courses</div>
-      <p style="font-size:0.82rem;color:var(--muted)">View and manage your enrolled courses for this semester.</p>
+      <p style="font-size:0.82rem;color:var(--muted)">View and manage your enrolled sections for this semester.</p>
     </div>
   </a>
   <a href="{{ url_for('transcript') }}" style="text-decoration:none">

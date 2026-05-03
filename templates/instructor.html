@@ -3,39 +3,43 @@
 
 <div class="page-header">
   <h1>My Classes</h1>
-  <p>{{ user.name }} &middot; Instructor Portal &middot; Semester {{ cfg.current_semester }}</p>
+  <p>{{ user.first_name }} {{ user.last_name }} &middot; Instructor &middot; {{ sem.term_name }} {{ sem.year }}</p>
 </div>
 
-{% for cd in courses_data %}
+{% for sd in sections_data %}
+{% set sec = sd.section %}
 <div class="table-wrap" style="margin-bottom:28px">
   <div class="table-title">
-    {{ cd.code }} — {{ cd.name }}
-    <span style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-left:12px">{{ cd.time_slot }} &middot; {{ cd.enrolled }}/{{ cd.max_enrolled }} enrolled</span>
+    {{ sec.code }} — {{ sec.title }}
+    <span style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-left:12px">
+      {{ sec.schedule_slot }} &middot; {{ sec.room }} &middot; {{ sec.enrolled_count }}/{{ sec.capacity }} enrolled
+    </span>
   </div>
   <table>
     <thead>
       <tr>
         <th>Student ID</th>
         <th>Name</th>
-        <th>Current Grade</th>
-        {% if cfg.phase == 'Grading' %}<th>Assign Grade</th>{% endif %}
+        <th>Status</th>
+        <th>Grade</th>
+        {% if sem.phase == 'grading' %}<th>Assign Grade</th>{% endif %}
       </tr>
     </thead>
     <tbody>
-      {% for s in cd.students %}
+      {% for s in sd.students %}
       <tr>
-        <td>{{ s.user_id }}</td>
+        <td>#{{ s.student_id }}</td>
         <td>{{ s.name }}</td>
-        <td>{{ s.grade or "—" }}</td>
-        {% if cfg.phase == 'Grading' %}
+        <td>{{ s.enrollment_status|title }}</td>
+        <td>{{ s.letter_grade or "—" }}</td>
+        {% if sem.phase == 'grading' %}
         <td>
           <form method="POST" action="{{ url_for('grade_student') }}" style="display:flex;gap:8px;align-items:center">
-            <input type="hidden" name="student_id" value="{{ s.user_id }}"/>
-            <input type="hidden" name="course_id" value="{{ cd.code }}"/>
+            <input type="hidden" name="enrollment_id" value="{{ s.enrollment_id }}"/>
             <select name="grade" class="grade-select">
               <option value="">— Select —</option>
               {% for g in ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F'] %}
-              <option value="{{ g }}" {% if s.grade == g %}selected{% endif %}>{{ g }}</option>
+              <option value="{{ g }}" {% if s.letter_grade == g %}selected{% endif %}>{{ g }}</option>
               {% endfor %}
             </select>
             <button type="submit" class="btn-primary btn-sm">Save</button>
@@ -44,13 +48,13 @@
         {% endif %}
       </tr>
       {% else %}
-      <tr><td colspan="4" style="color:var(--muted);font-size:0.82rem;padding:16px">No students enrolled.</td></tr>
+      <tr><td colspan="5" style="color:var(--muted);font-size:0.82rem;padding:16px">No students enrolled.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 {% else %}
-<div class="alert alert-info">You are not assigned to any courses this semester.</div>
+<div class="alert alert-info">You are not assigned to any sections this semester.</div>
 {% endfor %}
 
 {% endblock %}

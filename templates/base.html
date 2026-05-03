@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Collegeo – Academic Portal</title>
+  <title>College0 – Academic Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -15,13 +15,15 @@
 <header class="topbar">
   <div class="topbar-left">
     <div class="logo">
-      <span class="logo-text">Collegeo</span>
+      <span class="logo-text">College0</span>
       <span class="logo-sub">Academic Portal</span>
     </div>
   </div>
   <div class="topbar-center">
-    <span class="phase-badge">{{ cfg.phase }}</span>
-    <span class="semester-label">Semester {{ cfg.current_semester }}</span>
+    {% if sem %}
+    <span class="phase-badge">{{ sem.phase|title }}</span>
+    <span class="semester-label">{{ sem.term_name }} {{ sem.year }}</span>
+    {% endif %}
   </div>
   <div class="topbar-right">
     {% if user %}
@@ -95,8 +97,8 @@
 
     {% if user %}
     <div class="sidebar-user">
-      <div class="sidebar-user-name">{{ user.name }}</div>
-      <div class="sidebar-user-id">{{ user.user_id }} &middot; {{ user.role|capitalize }}</div>
+      <div class="sidebar-user-name">{{ user.first_name }} {{ user.last_name }}</div>
+      <div class="sidebar-user-id">#{{ user.user_id }} &middot; {{ user.role|capitalize }}</div>
       <a href="{{ url_for('logout') }}" class="btn-signout">Sign Out</a>
     </div>
     {% endif %}
@@ -109,30 +111,31 @@
 </div>
 
 <!-- LOGIN MODAL -->
-<div class="modal-overlay {% if request.args.get('login_error') %}open{% endif %}" id="loginModal">
+<div class="modal-overlay" id="loginModal">
   <div class="modal-card">
     <button class="modal-close" onclick="closeLoginModal()">&times;</button>
-    <div class="modal-logo">Collegeo</div>
+    <div class="modal-logo">College0</div>
     <h2 class="modal-title">Sign In</h2>
     <p class="modal-sub">Access your academic portal.</p>
 
     {% if request.args.get('login_error') %}
-    <div class="alert alert-error">Invalid User ID or password.</div>
+    <div class="alert alert-error">Invalid email or password. Please try again.</div>
     {% endif %}
 
     <div class="demo-box">
-      <strong>Demo credentials</strong> — all passwords: <code>pass123</code><br/>
-      Students: S101–S110 &middot; Instructors: I01–I03 &middot; Registrar: REG01 / admin
+      <strong>Demo credentials</strong> — password: <code>Password123!</code><br/>
+      <strong>Students:</strong> liam.turner@college0.edu, aisha.patel@college0.edu, priya.sharma@college0.edu<br/>
+      <strong>Instructor:</strong> alan.brooks@college0.edu &nbsp; <strong>Registrar:</strong> diana.morgan@college0.edu
     </div>
 
     <form method="POST" action="{{ url_for('login') }}">
       <div class="form-group">
-        <label>User ID</label>
-        <input type="text" name="user_id" placeholder="e.g. S101, I01, REG01" autocomplete="off" required/>
+        <label>Email Address</label>
+        <input type="email" name="email" placeholder="your.email@college0.edu" autocomplete="email" required/>
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" name="password" placeholder="Password" required/>
+        <input type="password" name="password" placeholder="Password" autocomplete="current-password" required/>
       </div>
       <button type="submit" class="btn-primary btn-block">Sign In &rarr;</button>
     </form>
@@ -143,12 +146,8 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-{% if not user %}
-<script>
-  {% if request.args.get('login_error') %}
-  document.getElementById('loginModal').classList.add('open');
-  {% endif %}
-</script>
+{% if request.args.get('login_error') %}
+<script>document.getElementById('loginModal').classList.add('open');</script>
 {% endif %}
 </body>
 </html>

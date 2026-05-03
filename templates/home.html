@@ -2,28 +2,25 @@
 {% block content %}
 
 <div class="banner">
-  <h1>Welcome to Collegeo</h1>
+  <h1>Welcome to College0</h1>
   <p>An AI-enabled academic management portal for students, instructors, and administrators.</p>
 </div>
 
 <div class="stats-row">
   <div class="stat-card">
     <div class="stat-label">Current Phase</div>
-    <div class="stat-value" style="font-size:1.1rem">{{ cfg.phase }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Semester</div>
-    <div class="stat-value">#{{ cfg.current_semester }}</div>
+    <div class="stat-value" style="font-size:1.05rem">{{ sem.phase|title }}</div>
+    <div class="stat-sub">{{ sem.term_name }} {{ sem.year }}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Students</div>
     <div class="stat-value">{{ total_students }}</div>
-    <div class="stat-sub">Active this semester</div>
+    <div class="stat-sub">Enrolled</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Active Courses</div>
-    <div class="stat-value">{{ total_courses }}</div>
-    <div class="stat-sub">Available</div>
+    <div class="stat-label">Active Sections</div>
+    <div class="stat-value">{{ total_sections }}</div>
+    <div class="stat-sub">This semester</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Campus Avg GPA</div>
@@ -38,75 +35,72 @@
 </div>
 
 <div class="three-col">
-  <!-- Top Rated -->
   <div class="col-card">
     <div class="col-card-title"><span class="icon">🏆</span> Top Rated Courses</div>
     {% for c in top_rated %}
     <div class="col-list-item">
-      <span class="item-name">{{ c.code }} — {{ c.name }}</span>
-      <span class="stars">{% for i in range(c.avg_rating|int) %}★{% endfor %}</span>
+      <span class="item-name">{{ c.code }} — {{ c.title }}</span>
+      <span class="stars">{% for i in range(c.avg|int) %}★{% endfor %}</span>
     </div>
     {% else %}
     <div style="font-size:0.8rem;color:var(--muted)">No reviews yet.</div>
     {% endfor %}
   </div>
 
-  <!-- Needs Improvement -->
   <div class="col-card">
     <div class="col-card-title"><span class="icon">⚠️</span> Needs Improvement</div>
     {% for c in needs_imp %}
     <div class="col-list-item">
-      <span class="item-name">{{ c.code }} — {{ c.name }}</span>
-      <span class="stars" style="color:#f59e0b">{% for i in range(c.avg_rating|int) %}★{% endfor %}</span>
+      <span class="item-name">{{ c.code }} — {{ c.title }}</span>
+      <span class="stars">{% for i in range(c.avg|int) %}★{% endfor %}</span>
     </div>
     {% else %}
     <div style="font-size:0.8rem;color:var(--muted)">No reviews yet.</div>
     {% endfor %}
   </div>
 
-  <!-- Top GPA Students -->
   <div class="col-card">
     <div class="col-card-title"><span class="icon">🎓</span> Top GPA Students</div>
-    {% for s in top_gpa_students %}
+    {% for s in top_gpa %}
     <div class="col-list-item">
-      <span class="item-name">{{ s.name }} ({{ s.user_id }})</span>
-      <span class="item-meta" style="color:var(--green);font-weight:600">{{ s.gpa }}</span>
+      <span class="item-name">{{ s.name }}</span>
+      <span class="item-meta" style="color:var(--green);font-weight:600">{{ "%.3f"|format(s.cumulative_gpa) }}</span>
     </div>
     {% endfor %}
   </div>
 </div>
 
-<!-- Course Catalogue -->
 <div class="table-wrap">
-  <div class="table-title">Course Catalogue</div>
+  <div class="table-title">Course Sections — {{ sem.term_name }} {{ sem.year }}</div>
   <table>
     <thead>
       <tr>
         <th>Code</th>
-        <th>Course Name</th>
+        <th>Course Title</th>
         <th>Instructor</th>
-        <th>Time</th>
+        <th>Schedule</th>
+        <th>Room</th>
         <th>Enrolled</th>
         <th>Core</th>
-        <th>Rating</th>
         <th>Status</th>
       </tr>
     </thead>
     <tbody>
-      {% for c in courses %}
+      {% for s in sections %}
       <tr>
-        <td><strong>{{ c.code }}</strong></td>
-        <td>{{ c.name }}</td>
-        <td>{{ c.instructor_id }}</td>
-        <td>{{ c.time_slot }}</td>
-        <td>{{ c.enrolled }}/{{ c.max_enrolled }}</td>
-        <td>{% if c.is_core %}<span class="badge-core">★ Core</span>{% else %}—{% endif %}</td>
+        <td><strong>{{ s.code }}</strong></td>
+        <td>{{ s.title }}</td>
+        <td>{{ s.instructor_name }}</td>
+        <td>{{ s.schedule_slot }}</td>
+        <td>{{ s.room }}</td>
+        <td>{{ s.enrolled_count }}/{{ s.capacity }}</td>
+        <td>{% if s.is_core %}<span class="badge-core">★ Core</span>{% else %}—{% endif %}</td>
         <td>
-          {% if c.avg_rating %}
-          <span class="stars">{% for i in range(c.avg_rating|int) %}★{% endfor %}</span>
-          {% else %}—{% endif %}
+          {% if s.status == 'open' %}<span class="badge-status-avail">Open</span>
+          {% elif s.status == 'full' %}<span style="color:var(--orange);font-weight:600">Full</span>
+          {% elif s.status == 'completed' %}<span style="color:var(--muted);font-weight:600">Completed</span>
+          {% else %}<span>{{ s.status|title }}</span>{% endif %}
         </td>
-        <td><span class="badge-status-avail">{{ c.status }}</span></td>
       </tr>
       {% endfor %}
     </tbody>

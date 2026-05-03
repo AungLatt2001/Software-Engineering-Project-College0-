@@ -10,35 +10,27 @@
 {% endif %}
 
 <div class="tabs">
-  <button class="tab-btn {% if tab == 'review' %}active{% endif %}" onclick="switchTab('review', this)">
-    🏆 Course Review
-  </button>
-  <button class="tab-btn {% if tab == 'graduation' %}active{% endif %}" onclick="switchTab('graduation', this)">
-    🎓 Graduation
-  </button>
-  <button class="tab-btn {% if tab == 'complaint' %}active{% endif %}" onclick="switchTab('complaint', this)">
-    📢 Complaint
-  </button>
+  <button class="tab-btn {% if tab == 'review' %}active{% endif %}" onclick="switchTab('review', this)">🏆 Course Review</button>
+  <button class="tab-btn {% if tab == 'graduation' %}active{% endif %}" onclick="switchTab('graduation', this)">🎓 Graduation</button>
+  <button class="tab-btn {% if tab == 'complaint' %}active{% endif %}" onclick="switchTab('complaint', this)">📢 Complaint</button>
 </div>
 
-<!-- COURSE REVIEW TAB -->
+<!-- COURSE REVIEW -->
 <div class="tab-pane {% if tab == 'review' %}active{% endif %}" id="tab-review">
   <div style="max-width:600px">
     <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Submit a Course Review</h2>
-    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:18px">Reviews are anonymous. Only available during the Grading period, before your grade is posted.</p>
-
-    {% if cfg.phase != 'Grading' %}
-    <div class="alert alert-info">Reviews are only available during the Grading period. Current phase: <strong>{{ cfg.phase }}</strong>.</div>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:18px">Reviews are anonymous. Only available during the Grading phase.</p>
+    {% if sem.phase != 'grading' %}
+    <div class="alert alert-info">Reviews are only available during the Grading phase. Current phase: <strong>{{ sem.phase|title }}</strong>.</div>
     {% endif %}
-
     <form method="POST" action="{{ url_for('reviews') }}">
       <input type="hidden" name="form_type" value="review"/>
       <div class="form-group">
-        <label>Course</label>
-        <select name="course_id" required>
-          <option value="">Select a course...</option>
-          {% for c in my_courses %}
-          <option value="{{ c.course_id }}">{{ c.course_id }} — {{ c.name }}</option>
+        <label>Section</label>
+        <select name="section_id" required>
+          <option value="">Select a section...</option>
+          {% for s in my_sections %}
+          <option value="{{ s.section_id }}">{{ s.code }} — {{ s.title }} ({{ s.term_name }} {{ s.year }})</option>
           {% endfor %}
         </select>
       </div>
@@ -56,28 +48,27 @@
         <label>Review Text</label>
         <textarea name="review_text" placeholder="Share your feedback (anonymous)..."></textarea>
       </div>
-      <button type="submit" class="btn-primary" {% if cfg.phase != 'Grading' %}disabled style="opacity:0.5;cursor:not-allowed"{% endif %}>Submit Review</button>
+      <button type="submit" class="btn-primary" {% if sem.phase != 'grading' %}disabled style="opacity:0.5;cursor:not-allowed"{% endif %}>Submit Review</button>
     </form>
   </div>
 </div>
 
-<!-- GRADUATION TAB -->
+<!-- GRADUATION -->
 <div class="tab-pane {% if tab == 'graduation' %}active{% endif %}" id="tab-graduation">
   <div style="max-width:560px">
-    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Request Graduation</h2>
-    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:18px">Submit a graduation request to the Registrar. Ensure you have completed all core courses and maintained a GPA ≥ 2.0.</p>
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Apply for Graduation</h2>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:18px">Ensure you have completed all core courses, maintain a cumulative GPA ≥ 2.0, and have no outstanding fines or active warnings.</p>
+    <div class="info-box">
+      Required core courses: CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499.
+    </div>
     <form method="POST" action="{{ url_for('reviews') }}">
       <input type="hidden" name="form_type" value="graduation"/>
-      <div class="form-group">
-        <label>Message <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-        <textarea name="message" placeholder="Any notes for the Registrar..."></textarea>
-      </div>
-      <button type="submit" class="btn-primary">Submit Graduation Request</button>
+      <button type="submit" class="btn-primary">Submit Graduation Application</button>
     </form>
   </div>
 </div>
 
-<!-- COMPLAINT TAB -->
+<!-- COMPLAINT -->
 <div class="tab-pane {% if tab == 'complaint' %}active{% endif %}" id="tab-complaint">
   <div style="max-width:560px">
     <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Submit a Complaint</h2>
@@ -85,12 +76,17 @@
     <form method="POST" action="{{ url_for('reviews') }}">
       <input type="hidden" name="form_type" value="complaint"/>
       <div class="form-group">
-        <label>Subject</label>
-        <input type="text" name="subject" placeholder="Brief subject of your complaint" required/>
+        <label>Complaint Against</label>
+        <select name="target_user_id" required>
+          <option value="">Select a person...</option>
+          {% for t in potential_targets %}
+          <option value="{{ t.user_id }}">{{ t.name }} ({{ t.role|capitalize }})</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="form-group">
         <label>Description</label>
-        <textarea name="description" placeholder="Describe your complaint in detail..." required></textarea>
+        <textarea name="complaint_text" placeholder="Describe your complaint in detail..." required></textarea>
       </div>
       <button type="submit" class="btn-primary">Submit Complaint</button>
     </form>

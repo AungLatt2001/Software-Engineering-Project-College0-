@@ -9,17 +9,27 @@
 <div class="transcript-stats">
   <div class="transcript-stat">
     <div class="ts-label">Cumulative GPA</div>
-    <div class="ts-value">{{ "%.1f"|format(st.gpa) }}</div>
+    <div class="ts-value">{{ "%.3f"|format(st.cumulative_gpa) }}</div>
+  </div>
+  <div class="transcript-stat">
+    <div class="ts-label">Semester GPA</div>
+    <div class="ts-value">{{ "%.3f"|format(st.semester_gpa) }}</div>
   </div>
   <div class="transcript-stat">
     <div class="ts-label">Warnings</div>
-    <div class="ts-value {% if st.warnings > 0 %}warn{% else %}neutral{% endif %}">{{ st.warnings }}/3</div>
+    <div class="ts-value {% if user.warning_count > 0 %}warn{% else %}neutral{% endif %}">{{ user.warning_count }}/3</div>
   </div>
   <div class="transcript-stat">
     <div class="ts-label">Honor Count</div>
     <div class="ts-value neutral">{{ st.honor_count }}</div>
     <div class="ts-sub">Each removes 1 warning</div>
   </div>
+  {% if st.fine_due > 0 %}
+  <div class="transcript-stat">
+    <div class="ts-label">Fine Due</div>
+    <div class="ts-value warn">${{ "%.2f"|format(st.fine_due) }}</div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="table-wrap">
@@ -27,23 +37,25 @@
     <thead>
       <tr>
         <th>Course Code</th>
-        <th>Course Name</th>
+        <th>Course Title</th>
+        <th>Credits</th>
         <th>Grade</th>
         <th>Points</th>
         <th>Semester</th>
       </tr>
     </thead>
     <tbody>
-      {% for e in history %}
+      {% for h in history %}
       <tr>
-        <td><strong>{{ e.course_id }}</strong></td>
-        <td>{{ e.course_name }}</td>
-        <td><strong>{{ e.grade }}</strong></td>
-        <td>{{ "%.1f"|format(e.grade_points) }}</td>
-        <td>Semester {{ e.semester }}</td>
+        <td><strong>{{ h.code }}</strong></td>
+        <td>{{ h.title }}</td>
+        <td>{{ h.credit_hours }}</td>
+        <td><strong>{{ h.letter_grade }}</strong></td>
+        <td>{{ "%.2f"|format(h.grade_points) }}</td>
+        <td>{{ h.term_name }} {{ h.year }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" style="color:var(--muted);font-size:0.82rem;padding:18px">No completed courses yet.</td></tr>
+      <tr><td colspan="6" style="color:var(--muted);font-size:0.82rem;padding:18px">No completed courses yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>

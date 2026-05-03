@@ -3,90 +3,111 @@
 
 <div class="page-header">
   <h1>Registrar Dashboard</h1>
-  <p>Manage semester settings, students, applications, and complaints.</p>
+  <p>Manage semesters, students, applications, complaints and graduation requests.</p>
 </div>
 
 <!-- SEMESTER CONTROL -->
 <div class="panel">
   <div class="panel-title">Semester Control</div>
-  <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
-    <div>
-      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">CURRENT SEMESTER</div>
-      <div style="font-size:1.3rem;font-weight:700;color:var(--navy)">#{{ cfg.current_semester }}</div>
-    </div>
-    <div>
-      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">CURRENT PHASE</div>
-      <span class="phase-badge" style="font-size:0.85rem;padding:5px 14px">{{ cfg.phase }}</span>
-    </div>
-    <form method="POST" action="{{ url_for('set_phase') }}" style="display:flex;align-items:flex-end;gap:8px;flex-direction:column">
-      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">CHANGE PHASE</div>
-      <div style="display:flex;gap:8px;align-items:center">
+  <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+    {% for s in all_semesters %}
+    <div style="background:{% if s.semester_id == sem.semester_id %}var(--blue-soft){% else %}#f8f9fb{% endif %};border:1px solid var(--border);border-radius:8px;padding:14px 18px;min-width:200px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:4px">{{ s.term_name }} {{ s.year }}</div>
+      <span class="phase-badge" style="font-size:0.75rem;padding:3px 10px;margin-bottom:10px;display:inline-block">{{ s.phase|title }}</span>
+      <form method="POST" action="{{ url_for('set_phase') }}" style="display:flex;gap:6px;margin-top:8px">
+        <input type="hidden" name="semester_id" value="{{ s.semester_id }}"/>
         <select name="phase" class="select-sm">
-          {% for p in ['Setup','Registration','Grading'] %}
-          <option value="{{ p }}" {% if cfg.phase == p %}selected{% endif %}>{{ p }}</option>
+          {% for p in ['setup','registration','running','grading','closed'] %}
+          <option value="{{ p }}" {% if s.phase == p %}selected{% endif %}>{{ p|title }}</option>
           {% endfor %}
         </select>
-        <button type="submit" class="btn-primary btn-sm">Set Phase</button>
-      </div>
-    </form>
-    <form method="POST" action="{{ url_for('advance_semester') }}">
-      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">NEXT SEMESTER</div>
-      <button type="submit" class="btn-secondary btn-sm" onclick="return confirm('Advance to next semester?')">Advance Semester &rarr;</button>
-    </form>
+        <button type="submit" class="btn-primary btn-sm">Set</button>
+      </form>
+    </div>
+    {% endfor %}
   </div>
 </div>
 
-<!-- STUDENTS -->
+<!-- ACTIVE WARNINGS -->
+{% if warnings %}
 <div class="panel">
-  <div class="panel-title">Students ({{ students|length }})</div>
+  <div class="panel-title">Active Warnings ({{ warnings|length }})</div>
   <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
     <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>GPA</th>
-          <th>Warnings</th>
-        </tr>
-      </thead>
+      <thead><tr><th>User</th><th>Reason</th><th>Source</th><th>Issued</th></tr></thead>
       <tbody>
-        {% for s in students %}
+        {% for w in warnings %}
         <tr>
-          <td>{{ s.user_id }}</td>
-          <td>{{ s.name }}</td>
-          <td style="color:var(--green);font-weight:600">{{ "%.2f"|format(s.gpa) }}</td>
-          <td style="{% if s.warnings > 0 %}color:var(--orange);font-weight:600{% endif %}">{{ s.warnings }}/3</td>
+          <td>{{ w.user_name }}</td>
+          <td>{{ w.reason }}</td>
+          <td style="font-size:0.75rem;color:var(--muted)">{{ w.source_module }}</td>
+          <td style="font-size:0.75rem;color:var(--muted)">{{ w.issued_at[:10] }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+{% endif %}
 
-<!-- APPLICATIONS -->
+<!-- STUDENTS -->
 <div class="panel">
-  <div class="panel-title">Applications ({{ applications|length }})</div>
+  <div class="panel-title">Students ({{ students|length }})</div>
+  <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Status</th><th>Cum GPA</th><th>Warnings</th><th>Honors</th><th>Fine</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>#{{ s.user_id }}</td>
+          <td>{{ s.name }}</td>
+          <td style="font-size:0.75rem">{{ s.email }}</td>
+          <td><span style="color:{% if s.status=='active' %}var(--green){% elif s.status=='suspended' %}var(--red){% else %}var(--muted){% endif %};font-weight:600">{{ s.status|title }}</span></td>
+          <td style="color:var(--green);font-weight:600">{{ "%.3f"|format(s.cumulative_gpa) }}</td>
+          <td style="{% if s.warning_count > 0 %}color:var(--orange);font-weight:600{% endif %}">{{ s.warning_count }}/3</td>
+          <td>{{ s.honor_count }}</td>
+          <td>{% if s.fine_due > 0 %}<span style="color:var(--red);font-weight:600">${{ "%.2f"|format(s.fine_due) }}</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:14px">
+    <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px;color:var(--text)">Issue Manual Warning</div>
+    <form method="POST" action="{{ url_for('issue_warning') }}" style="display:flex;gap:8px;flex-wrap:wrap">
+      <select name="user_id" class="select-sm" style="min-width:180px">
+        <option value="">Select student...</option>
+        {% for s in students %}
+        <option value="{{ s.user_id }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="reason" placeholder="Reason for warning" style="flex:1;min-width:200px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:inherit"/>
+      <button type="submit" class="btn-secondary btn-sm">Issue Warning</button>
+    </form>
+  </div>
+</div>
+
+<!-- VISITOR APPLICATIONS -->
+<div class="panel">
+  <div class="panel-title">Visitor Applications ({{ applications|length }})</div>
   {% if applications %}
   <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
     <table>
-      <thead>
-        <tr><th>Name</th><th>Email</th><th>Role</th><th>GPA</th><th>Status</th><th>Action</th></tr>
-      </thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Type</th><th>GPA</th><th>Justification</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>
         {% for a in applications %}
         <tr>
-          <td>{{ a.name }}</td>
-          <td>{{ a.email }}</td>
-          <td>{{ a.role }}</td>
-          <td>{{ a.gpa or "—" }}</td>
+          <td>{{ a.applicant_name }}</td>
+          <td style="font-size:0.75rem">{{ a.email }}</td>
+          <td>{{ a.application_type|title }}</td>
+          <td>{{ "%.2f"|format(a.prior_gpa) if a.prior_gpa else "—" }}</td>
+          <td style="font-size:0.78rem;max-width:220px">{{ a.justification or "—" }}</td>
+          <td><span style="font-weight:600;color:{% if a.status=='approved' %}var(--green){% elif a.status=='rejected' %}var(--red){% else %}var(--orange){% endif %}">{{ a.status|title }}</span></td>
           <td>
-            <span style="font-weight:600;color:{% if a.status=='Approved' %}var(--green){% elif a.status=='Rejected' %}var(--red){% else %}var(--orange){% endif %}">{{ a.status }}</span>
-          </td>
-          <td>
-            {% if a.status == 'Pending' %}
-            <form method="POST" action="{{ url_for('decide_application', app_id=a.id) }}" style="display:flex;gap:6px">
-              <button name="decision" value="Approved" class="btn-primary btn-sm">Approve</button>
-              <button name="decision" value="Rejected" class="btn-secondary btn-sm">Reject</button>
+            {% if a.status == 'pending' %}
+            <form method="POST" action="{{ url_for('decide_application', app_id=a.application_id) }}" style="display:flex;gap:4px">
+              <button name="decision" value="approved" class="btn-primary btn-sm">Approve</button>
+              <button name="decision" value="rejected" class="btn-secondary btn-sm">Reject</button>
             </form>
             {% else %}—{% endif %}
           </td>
@@ -96,7 +117,7 @@
     </table>
   </div>
   {% else %}
-  <p style="font-size:0.82rem;color:var(--muted)">No applications yet.</p>
+  <p style="font-size:0.82rem;color:var(--muted)">No applications.</p>
   {% endif %}
 </div>
 
@@ -106,49 +127,64 @@
   {% if complaints %}
   <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
     <table>
-      <thead>
-        <tr><th>Student</th><th>Subject</th><th>Description</th><th>Date</th></tr>
-      </thead>
+      <thead><tr><th>Filed By</th><th>Against</th><th>Description</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>
         {% for c in complaints %}
         <tr>
-          <td>{{ c.name }}</td>
-          <td>{{ c.subject }}</td>
-          <td style="max-width:300px">{{ c.description }}</td>
-          <td style="font-size:0.75rem;color:var(--muted)">{{ c.created_at[:10] }}</td>
+          <td>{{ c.filer_name }}</td>
+          <td>{{ c.target_name }}</td>
+          <td style="font-size:0.78rem;max-width:280px">{{ c.complaint_text }}</td>
+          <td><span style="font-weight:600;color:{% if c.status=='resolved' %}var(--green){% elif c.status=='open' %}var(--orange){% else %}var(--muted){% endif %}">{{ c.status|replace('_',' ')|title }}</span></td>
+          <td>
+            {% if c.status in ('open','under_review') %}
+            <form method="POST" action="{{ url_for('resolve_complaint', cid=c.complaint_id) }}" style="display:flex;gap:4px;flex-direction:column">
+              <input type="text" name="resolution_note" placeholder="Resolution note" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.75rem;font-family:inherit;min-width:150px"/>
+              <div style="display:flex;gap:4px">
+                <button name="status" value="resolved" class="btn-primary btn-sm">Resolve</button>
+                <button name="status" value="dismissed" class="btn-secondary btn-sm">Dismiss</button>
+              </div>
+            </form>
+            {% else %}<span style="font-size:0.75rem;color:var(--muted)">{{ c.resolution_note or "—" }}</span>{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   {% else %}
-  <p style="font-size:0.82rem;color:var(--muted)">No complaints submitted.</p>
+  <p style="font-size:0.82rem;color:var(--muted)">No complaints.</p>
   {% endif %}
 </div>
 
-<!-- GRADUATION REQUESTS -->
+<!-- GRADUATION APPLICATIONS -->
 <div class="panel">
-  <div class="panel-title">Graduation Requests ({{ grad_requests|length }})</div>
-  {% if grad_requests %}
+  <div class="panel-title">Graduation Applications ({{ grad_apps|length }})</div>
+  {% if grad_apps %}
   <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
     <table>
-      <thead>
-        <tr><th>Student</th><th>Message</th><th>Status</th><th>Date</th></tr>
-      </thead>
+      <thead><tr><th>Student</th><th>GPA</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>
-        {% for g in grad_requests %}
+        {% for g in grad_apps %}
         <tr>
-          <td>{{ g.name }}</td>
-          <td>{{ g.message or "—" }}</td>
-          <td><span style="color:var(--orange);font-weight:600">{{ g.status }}</span></td>
-          <td style="font-size:0.75rem;color:var(--muted)">{{ g.created_at[:10] }}</td>
+          <td>{{ g.student_name }}</td>
+          <td style="color:var(--green);font-weight:600">{{ "%.3f"|format(g.cumulative_gpa) }}</td>
+          <td style="font-size:0.75rem;color:var(--muted)">{{ g.submitted_at[:10] }}</td>
+          <td><span style="font-weight:600;color:{% if g.decision_status=='approved' %}var(--green){% elif g.decision_status=='rejected' %}var(--red){% else %}var(--orange){% endif %}">{{ g.decision_status|title }}</span></td>
+          <td>
+            {% if g.decision_status == 'pending' %}
+            <form method="POST" action="{{ url_for('decide_graduation', gid=g.graduation_app_id) }}" style="display:flex;gap:4px">
+              <button name="decision" value="approved" class="btn-primary btn-sm">Approve</button>
+              <button name="decision" value="rejected" class="btn-secondary btn-sm">Reject</button>
+            </form>
+            {% else %}—{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   {% else %}
-  <p style="font-size:0.82rem;color:var(--muted)">No graduation requests yet.</p>
+  <p style="font-size:0.82rem;color:var(--muted)">No graduation applications.</p>
   {% endif %}
 </div>
 

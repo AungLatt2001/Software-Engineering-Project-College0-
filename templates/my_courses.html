@@ -3,7 +3,7 @@
 
 <div class="page-header">
   <h1>My Courses</h1>
-  <p>Manage your course registrations for this semester.</p>
+  <p>Manage your course registrations for {{ sem.term_name }} {{ sem.year }}.</p>
 </div>
 
 <div class="section-title">Enrolled This Semester</div>
@@ -12,31 +12,35 @@
     <thead>
       <tr>
         <th>Code</th>
-        <th>Course Name</th>
-        <th>Time Slot</th>
+        <th>Course Title</th>
+        <th>Schedule</th>
+        <th>Room</th>
         <th>Instructor</th>
+        <th>Credits</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       {% for e in current_enrollments %}
       <tr>
-        <td><strong>{{ e.course_id }}</strong></td>
-        <td>{{ e.course_name }}</td>
-        <td>{{ e.time_slot }}</td>
-        <td>{{ e.instructor_id }}</td>
+        <td><strong>{{ e.code }}</strong></td>
+        <td>{{ e.title }}</td>
+        <td>{{ e.schedule_slot }}</td>
+        <td>{{ e.room }}</td>
+        <td>{{ e.instructor_name }}</td>
+        <td>{{ e.credit_hours }}</td>
         <td>
-          {% if cfg.phase == 'Registration' %}
+          {% if sem.phase == 'registration' %}
           <form method="POST" style="display:inline">
             <input type="hidden" name="action" value="drop"/>
-            <input type="hidden" name="course_id" value="{{ e.course_id }}"/>
+            <input type="hidden" name="section_id" value="{{ e.section_id }}"/>
             <button type="submit" class="btn-secondary btn-sm">Drop</button>
           </form>
           {% else %}—{% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="5" style="color:var(--muted);font-size:0.82rem;padding:18px">Not enrolled in any courses this semester.</td></tr>
+      <tr><td colspan="7" style="color:var(--muted);font-size:0.82rem;padding:18px">Not enrolled in any sections this semester.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -46,35 +50,47 @@
 <div class="alert alert-info">{{ msg }}</div>
 {% endif %}
 
-{% if cfg.phase == 'Registration' %}
-<div class="section-title" style="margin-top:24px">Available Courses</div>
+{% if sem.phase == 'registration' %}
+<div class="section-title" style="margin-top:24px">Available Sections</div>
 <div class="table-wrap">
   <table>
     <thead>
       <tr>
         <th>Code</th>
-        <th>Course Name</th>
-        <th>Time Slot</th>
+        <th>Course Title</th>
+        <th>Schedule</th>
+        <th>Room</th>
         <th>Instructor</th>
+        <th>Seats</th>
         <th>Core</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for c in all_courses %}
-      {% if c.code not in enrolled_ids %}
+      {% for s in all_sections %}
+      {% if s.section_id not in enrolled_section_ids %}
       <tr>
-        <td><strong>{{ c.code }}</strong></td>
-        <td>{{ c.name }}</td>
-        <td>{{ c.time_slot }}</td>
-        <td>{{ c.instructor_id }}</td>
-        <td>{% if c.is_core %}<span class="badge-core">★ Core</span>{% else %}—{% endif %}</td>
+        <td><strong>{{ s.code }}</strong></td>
+        <td>{{ s.title }}</td>
+        <td>{{ s.schedule_slot }}</td>
+        <td>{{ s.room }}</td>
+        <td>{{ s.instructor_name }}</td>
+        <td>{{ s.enrolled_count }}/{{ s.capacity }}</td>
+        <td>{% if s.is_core %}<span class="badge-core">★ Core</span>{% else %}—{% endif %}</td>
         <td>
+          {% if s.section_id in waitlisted_ids %}
+          <span style="color:var(--orange);font-size:0.78rem;font-weight:600">On Waitlist</span>
+          {% else %}
           <form method="POST" style="display:inline">
             <input type="hidden" name="action" value="enroll"/>
-            <input type="hidden" name="course_id" value="{{ c.code }}"/>
+            <input type="hidden" name="section_id" value="{{ s.section_id }}"/>
+            {% if s.status == 'full' %}
+            <button type="submit" class="btn-secondary btn-sm">Join Waitlist</button>
+            {% else %}
             <button type="submit" class="btn-primary btn-sm">Enroll</button>
+            {% endif %}
           </form>
+          {% endif %}
         </td>
       </tr>
       {% endif %}
