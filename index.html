@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUNYFirst Clone App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>CUNYFirst Clone App</h1>
+      <p class="subtitle">CSC32200 Final Project</p>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" data-target="all">All Views</button>
+    <button class="nav-btn" data-target="home-page">Home</button>
+    <button class="nav-btn" data-target="login-screen">Login</button>
+    <button class="nav-btn" data-target="student-dashboard">Dashboard</button>
+    <button class="nav-btn" data-target="my-courses">My Courses</button>
+    <button class="nav-btn" data-target="transcript">Transcript</button>
+    <button class="nav-btn" data-target="apply-page">Apply</button>
+    <button class="nav-btn" data-target="reviews-more">Reviews</button>
+    <button class="nav-btn" data-target="ai-assistant">AI Assistant</button>
+  </nav>
+
+  <main>
+    <div class="grid" id="gallery">
+      <div class="card" data-name="home-page">
+        <div class="card-img-wrap">
+          <img src="GUI/home-page.png" alt="Home Page" loading="lazy" />
+        </div>
+        <div class="card-label">Home Page</div>
+      </div>
+      <div class="card" data-name="login-screen">
+        <div class="card-img-wrap">
+          <img src="GUI/login-screen.png" alt="Login Screen" loading="lazy" />
+        </div>
+        <div class="card-label">Login Screen</div>
+      </div>
+      <div class="card" data-name="student-dashboard">
+        <div class="card-img-wrap">
+          <img src="GUI/student-dashboard.png" alt="Student Dashboard" loading="lazy" />
+        </div>
+        <div class="card-label">Student Dashboard</div>
+      </div>
+      <div class="card" data-name="my-courses">
+        <div class="card-img-wrap">
+          <img src="GUI/my-courses.png" alt="My Courses" loading="lazy" />
+        </div>
+        <div class="card-label">My Courses</div>
+      </div>
+      <div class="card" data-name="transcript">
+        <div class="card-img-wrap">
+          <img src="GUI/transcript.png" alt="Transcript" loading="lazy" />
+        </div>
+        <div class="card-label">Transcript</div>
+      </div>
+      <div class="card" data-name="apply-page">
+        <div class="card-img-wrap">
+          <img src="GUI/apply-page.png" alt="Apply Page" loading="lazy" />
+        </div>
+        <div class="card-label">Apply Page</div>
+      </div>
+      <div class="card" data-name="reviews-more">
+        <div class="card-img-wrap">
+          <img src="GUI/reviews-more.png" alt="Reviews" loading="lazy" />
+        </div>
+        <div class="card-label">Reviews</div>
+      </div>
+      <div class="card" data-name="ai-assistant">
+        <div class="card-img-wrap">
+          <img src="GUI/ai-assistant.png" alt="AI Assistant" loading="lazy" />
+        </div>
+        <div class="card-label">AI Assistant</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <img id="modalImg" src="" alt="" />
+      <div class="modal-title" id="modalTitle"></div>
+    </div>
+  </div>
+
+  <footer>
+    <p>CUNYFirst Clone &mdash; CSC32200 Final Project</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
