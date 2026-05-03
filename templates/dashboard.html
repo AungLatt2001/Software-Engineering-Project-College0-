@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="banner">
+  <h1>Welcome back, {{ user.name }}</h1>
+  <p>{{ user.user_id }} &middot; Student Portal</p>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-label">GPA</div>
+    <div class="stat-value green">{{ "%.1f"|format(st.gpa) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Warnings</div>
+    <div class="stat-value {% if st.warnings > 0 %}" style="color:var(--orange)"{% else %}"{% endif %}>{{ st.warnings }}/3</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Enrolled</div>
+    <div class="stat-value">{{ enrolled }}</div>
+    <div class="stat-sub">This semester</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Completed</div>
+    <div class="stat-value">{{ completed }}</div>
+    <div class="stat-sub">Courses with grades</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:680px">
+  <a href="{{ url_for('my_courses') }}" style="text-decoration:none">
+    <div class="col-card" style="cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'" onmouseout="this.style.boxShadow=''">
+      <div class="col-card-title"><span class="icon">📚</span> My Courses</div>
+      <p style="font-size:0.82rem;color:var(--muted)">View and manage your enrolled courses for this semester.</p>
+    </div>
+  </a>
+  <a href="{{ url_for('transcript') }}" style="text-decoration:none">
+    <div class="col-card" style="cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'" onmouseout="this.style.boxShadow=''">
+      <div class="col-card-title"><span class="icon">📋</span> Transcript</div>
+      <p style="font-size:0.82rem;color:var(--muted)">View your full grade history and academic standing.</p>
+    </div>
+  </a>
+  <a href="{{ url_for('reviews') }}" style="text-decoration:none">
+    <div class="col-card" style="cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'" onmouseout="this.style.boxShadow=''">
+      <div class="col-card-title"><span class="icon">⭐</span> Reviews &amp; More</div>
+      <p style="font-size:0.82rem;color:var(--muted)">Submit course reviews, graduation request, or complaints.</p>
+    </div>
+  </a>
+  <a href="{{ url_for('ai_assistant') }}" style="text-decoration:none">
+    <div class="col-card" style="cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'" onmouseout="this.style.boxShadow=''">
+      <div class="col-card-title"><span class="icon">🤖</span> AI Assistant</div>
+      <p style="font-size:0.82rem;color:var(--muted)">Ask questions about your academic portal and requirements.</p>
+    </div>
+  </a>
+</div>
+
+{% endblock %}

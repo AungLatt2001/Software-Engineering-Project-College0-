@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <h1>Apply to Collegeo</h1>
+  <p>Submit your application to join as a student or instructor.</p>
+</div>
+
+<div class="form-card">
+  {% if success %}
+  <div class="alert alert-success">✓ Application submitted successfully! The Registrar will review it shortly.</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <div class="info-box">
+    Students require GPA &gt; 3.0 for admission. A registrar will review all applications.
+  </div>
+
+  <form method="POST" action="{{ url_for('apply') }}">
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" name="name" placeholder="Your full name" required/>
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" name="email" placeholder="email@example.com" required/>
+    </div>
+    <div class="form-group">
+      <label>Applying As</label>
+      <select name="role">
+        <option value="student">Student</option>
+        <option value="instructor">Instructor</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Current GPA (0.0 – 4.0)</label>
+      <input type="number" name="gpa" min="0" max="4" step="0.01" placeholder="e.g. 3.75"/>
+    </div>
+    <div class="form-group">
+      <label>Statement <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <textarea name="statement" placeholder="Why do you want to join?"></textarea>
+    </div>
+    <button type="submit" class="btn-primary btn-block">Submit Application</button>
+  </form>
+</div>
+
+{% endblock %}

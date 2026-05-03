@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <h1>AI Assistant</h1>
+  <p>Ask questions about Collegeo — answered from local knowledge, with LLM fallback.</p>
+</div>
+
+<div class="ai-card">
+  <form method="POST" action="{{ url_for('ai_assistant') }}" id="aiForm">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Your Question</label>
+      <textarea name="question" id="questionInput" placeholder="e.g. What are the graduation requirements?" style="min-height:90px">{{ question }}</textarea>
+    </div>
+    <div class="ai-btn-row">
+      <button type="submit" class="btn-primary">Ask AI</button>
+      <button type="button" class="btn-secondary" onclick="clearQuestion()">Clear</button>
+    </div>
+  </form>
+
+  {% if answer %}
+  <div class="ai-answer">
+    <strong style="display:block;margin-bottom:6px;font-size:0.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Answer</strong>
+    {{ answer }}
+  </div>
+  {% endif %}
+
+  <div style="margin-top:20px">
+    <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:10px">Quick Questions:</div>
+    <div class="quick-questions">
+      <button class="quick-btn" onclick="askQuick('What are the graduation requirements?')">What are the graduation requirements?</button>
+      <button class="quick-btn" onclick="askQuick('How does the warning system work?')">How does the warning system work?</button>
+      <button class="quick-btn" onclick="askQuick('What are the semester phases?')">What are the semester phases?</button>
+      <button class="quick-btn" onclick="askQuick('How do course reviews work?')">How do course reviews work?</button>
+      <button class="quick-btn" onclick="askQuick('What is my current GPA?')">What is my current GPA?</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function askQuick(q) {
+  document.getElementById('questionInput').value = q;
+  document.getElementById('aiForm').submit();
+}
+function clearQuestion() {
+  document.getElementById('questionInput').value = '';
+}
+</script>
+{% endblock %}

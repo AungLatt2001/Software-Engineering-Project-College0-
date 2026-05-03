@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Collegeo – Academic Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <span class="logo-text">Collegeo</span>
+      <span class="logo-sub">Academic Portal</span>
+    </div>
+  </div>
+  <div class="topbar-center">
+    <span class="phase-badge">{{ cfg.phase }}</span>
+    <span class="semester-label">Semester {{ cfg.current_semester }}</span>
+  </div>
+  <div class="topbar-right">
+    {% if user %}
+      <a href="{{ url_for('logout') }}" class="btn-signin">Sign Out</a>
+    {% else %}
+      <button class="btn-signin" onclick="openLoginModal()">Sign In</button>
+    {% endif %}
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">General</div>
+      <a href="{{ url_for('home') }}" class="nav-item {% if request.endpoint == 'home' %}active{% endif %}">
+        <span class="nav-icon">&#8962;</span>
+        <span class="nav-text">Home</span>
+      </a>
+      <a href="{{ url_for('apply') }}" class="nav-item {% if request.endpoint == 'apply' %}active{% endif %}">
+        <span class="nav-icon">&#128196;</span>
+        <span class="nav-text">Apply</span>
+      </a>
+      <a href="{{ url_for('ai_assistant') }}" class="nav-item {% if request.endpoint == 'ai_assistant' %}active{% endif %}">
+        <span class="nav-icon">&#129302;</span>
+        <span class="nav-text">AI Assistant</span>
+      </a>
+    </div>
+
+    {% if user and user.role == 'student' %}
+    <div class="sidebar-section">
+      <div class="sidebar-label">My Portal</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">&#9707;</span>
+        <span class="nav-text">Dashboard</span>
+      </a>
+      <a href="{{ url_for('my_courses') }}" class="nav-item {% if request.endpoint == 'my_courses' %}active{% endif %}">
+        <span class="nav-icon">&#128218;</span>
+        <span class="nav-text">My Courses</span>
+      </a>
+      <a href="{{ url_for('transcript') }}" class="nav-item {% if request.endpoint == 'transcript' %}active{% endif %}">
+        <span class="nav-icon">&#128203;</span>
+        <span class="nav-text">Transcript</span>
+      </a>
+      <a href="{{ url_for('reviews') }}" class="nav-item {% if request.endpoint == 'reviews' %}active{% endif %}">
+        <span class="nav-icon">&#11088;</span>
+        <span class="nav-text">Reviews &amp; More</span>
+      </a>
+    </div>
+    {% endif %}
+
+    {% if user and user.role == 'instructor' %}
+    <div class="sidebar-section">
+      <div class="sidebar-label">Instructor</div>
+      <a href="{{ url_for('instructor') }}" class="nav-item {% if request.endpoint == 'instructor' %}active{% endif %}">
+        <span class="nav-icon">&#9707;</span>
+        <span class="nav-text">My Classes</span>
+      </a>
+    </div>
+    {% endif %}
+
+    {% if user and user.role == 'registrar' %}
+    <div class="sidebar-section">
+      <div class="sidebar-label">Admin</div>
+      <a href="{{ url_for('registrar') }}" class="nav-item {% if request.endpoint == 'registrar' %}active{% endif %}">
+        <span class="nav-icon">&#9707;</span>
+        <span class="nav-text">Registrar</span>
+      </a>
+    </div>
+    {% endif %}
+
+    {% if user %}
+    <div class="sidebar-user">
+      <div class="sidebar-user-name">{{ user.name }}</div>
+      <div class="sidebar-user-id">{{ user.user_id }} &middot; {{ user.role|capitalize }}</div>
+      <a href="{{ url_for('logout') }}" class="btn-signout">Sign Out</a>
+    </div>
+    {% endif %}
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay {% if request.args.get('login_error') %}open{% endif %}" id="loginModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+    <div class="modal-logo">Collegeo</div>
+    <h2 class="modal-title">Sign In</h2>
+    <p class="modal-sub">Access your academic portal.</p>
+
+    {% if request.args.get('login_error') %}
+    <div class="alert alert-error">Invalid User ID or password.</div>
+    {% endif %}
+
+    <div class="demo-box">
+      <strong>Demo credentials</strong> — all passwords: <code>pass123</code><br/>
+      Students: S101–S110 &middot; Instructors: I01–I03 &middot; Registrar: REG01 / admin
+    </div>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label>User ID</label>
+        <input type="text" name="user_id" placeholder="e.g. S101, I01, REG01" autocomplete="off" required/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Password" required/>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Sign In &rarr;</button>
+    </form>
+    <div class="modal-back">
+      <a href="{{ url_for('home') }}">&#8592; Back to Home</a>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% if not user %}
+<script>
+  {% if request.args.get('login_error') %}
+  document.getElementById('loginModal').classList.add('open');
+  {% endif %}
+</script>
+{% endif %}
+</body>
+</html>

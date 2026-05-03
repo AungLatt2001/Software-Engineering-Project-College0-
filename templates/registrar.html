@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <h1>Registrar Dashboard</h1>
+  <p>Manage semester settings, students, applications, and complaints.</p>
+</div>
+
+<!-- SEMESTER CONTROL -->
+<div class="panel">
+  <div class="panel-title">Semester Control</div>
+  <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+    <div>
+      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">CURRENT SEMESTER</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--navy)">#{{ cfg.current_semester }}</div>
+    </div>
+    <div>
+      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">CURRENT PHASE</div>
+      <span class="phase-badge" style="font-size:0.85rem;padding:5px 14px">{{ cfg.phase }}</span>
+    </div>
+    <form method="POST" action="{{ url_for('set_phase') }}" style="display:flex;align-items:flex-end;gap:8px;flex-direction:column">
+      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">CHANGE PHASE</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select name="phase" class="select-sm">
+          {% for p in ['Setup','Registration','Grading'] %}
+          <option value="{{ p }}" {% if cfg.phase == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn-primary btn-sm">Set Phase</button>
+      </div>
+    </form>
+    <form method="POST" action="{{ url_for('advance_semester') }}">
+      <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">NEXT SEMESTER</div>
+      <button type="submit" class="btn-secondary btn-sm" onclick="return confirm('Advance to next semester?')">Advance Semester &rarr;</button>
+    </form>
+  </div>
+</div>
+
+<!-- STUDENTS -->
+<div class="panel">
+  <div class="panel-title">Students ({{ students|length }})</div>
+  <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>GPA</th>
+          <th>Warnings</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>{{ s.user_id }}</td>
+          <td>{{ s.name }}</td>
+          <td style="color:var(--green);font-weight:600">{{ "%.2f"|format(s.gpa) }}</td>
+          <td style="{% if s.warnings > 0 %}color:var(--orange);font-weight:600{% endif %}">{{ s.warnings }}/3</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- APPLICATIONS -->
+<div class="panel">
+  <div class="panel-title">Applications ({{ applications|length }})</div>
+  {% if applications %}
+  <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>GPA</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for a in applications %}
+        <tr>
+          <td>{{ a.name }}</td>
+          <td>{{ a.email }}</td>
+          <td>{{ a.role }}</td>
+          <td>{{ a.gpa or "—" }}</td>
+          <td>
+            <span style="font-weight:600;color:{% if a.status=='Approved' %}var(--green){% elif a.status=='Rejected' %}var(--red){% else %}var(--orange){% endif %}">{{ a.status }}</span>
+          </td>
+          <td>
+            {% if a.status == 'Pending' %}
+            <form method="POST" action="{{ url_for('decide_application', app_id=a.id) }}" style="display:flex;gap:6px">
+              <button name="decision" value="Approved" class="btn-primary btn-sm">Approve</button>
+              <button name="decision" value="Rejected" class="btn-secondary btn-sm">Reject</button>
+            </form>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="font-size:0.82rem;color:var(--muted)">No applications yet.</p>
+  {% endif %}
+</div>
+
+<!-- COMPLAINTS -->
+<div class="panel">
+  <div class="panel-title">Complaints ({{ complaints|length }})</div>
+  {% if complaints %}
+  <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Subject</th><th>Description</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for c in complaints %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.subject }}</td>
+          <td style="max-width:300px">{{ c.description }}</td>
+          <td style="font-size:0.75rem;color:var(--muted)">{{ c.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="font-size:0.82rem;color:var(--muted)">No complaints submitted.</p>
+  {% endif %}
+</div>
+
+<!-- GRADUATION REQUESTS -->
+<div class="panel">
+  <div class="panel-title">Graduation Requests ({{ grad_requests|length }})</div>
+  {% if grad_requests %}
+  <div class="table-wrap" style="box-shadow:none;border:1px solid var(--border)">
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Message</th><th>Status</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for g in grad_requests %}
+        <tr>
+          <td>{{ g.name }}</td>
+          <td>{{ g.message or "—" }}</td>
+          <td><span style="color:var(--orange);font-weight:600">{{ g.status }}</span></td>
+          <td style="font-size:0.75rem;color:var(--muted)">{{ g.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="font-size:0.82rem;color:var(--muted)">No graduation requests yet.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

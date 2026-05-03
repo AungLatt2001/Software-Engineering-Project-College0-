@@ -1,43 +1,72 @@
-# CUNYFirst Clone App
+# Collegeo — Academic Portal (CUNYFirst Clone)
 
 ## Project Overview
-A CUNYFirst clone app built as a CSC32200 final project. Currently displays UI mockups/screenshots for the planned application views.
+A full-stack academic management portal built as the CSC32200 final project. Replicates the CUNYFirst experience under the "Collegeo" brand.
 
 ## Tech Stack
-- **Frontend**: Static HTML, CSS, vanilla JavaScript
-- **Server**: Node.js built-in `http` module (no external dependencies)
-- **UI Assets**: PNG mockup images in `/GUI`
+- **Backend**: Python 3 + Flask
+- **Database**: SQLite (via `database.py`)
+- **Frontend**: Jinja2 templates + vanilla CSS/JS
+- **Auth**: Flask sessions + Werkzeug password hashing
+- **Server**: Flask dev server on port 5000
 
-## Project Structure
+## User Roles & Demo Credentials (all passwords: `pass123`)
+| Role | IDs |
+|------|-----|
+| Student | S101–S110 |
+| Instructor | I01–I03 |
+| Registrar | REG01 or admin |
+
+## Pages / Routes
+| Route | Description |
+|-------|-------------|
+| `/` | Public home — stats, top rated courses, course catalogue |
+| `/login` (POST) | Login handler → redirects by role |
+| `/logout` | Clear session |
+| `/apply` | Public application form |
+| `/dashboard` | Student dashboard (GPA, warnings, enrolled, completed) |
+| `/my-courses` | Student course list + enrollment (Registration phase only) |
+| `/transcript` | Student grade history + GPA |
+| `/reviews` | Course reviews, graduation request, complaints |
+| `/ai-assistant` | AI Q&A about the portal |
+| `/instructor` | Instructor's classes + grade entry (Grading phase) |
+| `/registrar` | Admin panel — phase control, students, applications, complaints |
+
+## File Structure
 ```
-/
-├── index.html        # Main page — gallery of UI mockups
-├── style.css         # Styling
-├── app.js            # Frontend JS (filtering, modal)
-├── server.js         # Simple Node.js static file server on port 5000
-├── GUI/              # UI mockup PNG screenshots
-│   ├── home-page.png
-│   ├── login-screen.png
-│   ├── student-dashboard.png
-│   ├── my-courses.png
-│   ├── transcript.png
-│   ├── apply-page.png
-│   ├── reviews-more.png
-│   └── ai-assistant.png
-└── README.md
+app.py              Flask app + all routes
+database.py         DB schema, init, and seed data
+collegeo.db         SQLite database (auto-created)
+requirements.txt    Flask, Werkzeug
+templates/
+  base.html         Shared layout (topbar, sidebar, login modal)
+  home.html         Public home page
+  apply.html        Application form
+  dashboard.html    Student dashboard
+  my_courses.html   Enrollment management
+  transcript.html   Grade history
+  reviews.html      Reviews/Graduation/Complaints tabs
+  ai_assistant.html AI Q&A
+  instructor.html   Instructor grade panel
+  registrar.html    Admin control panel
+static/
+  css/style.css     All styles (Inter font, navy/white theme)
+  js/app.js         Login modal JS
+GUI/                Original UI mockup PNGs (reference)
 ```
 
-## Running the App
-The app runs on port 5000 via the "Start application" workflow:
-```
-node server.js
-```
+## Semester Phases
+- **Setup** — Admin configures courses; no enrollment or reviews
+- **Registration** — Students can enroll/drop courses
+- **Grading** — Instructors assign grades; students submit reviews
 
-## Planned Features (per README)
-A. Frontend
-B. Backend
-C. Database
-D. API
-E. Deployment
-F. AI Integration
-G. Native App / Cross Platform (Windows, Android, iOS, Web)
+## Database Schema
+- `users` — all users (students, instructors, registrar)
+- `students` — GPA, warnings, honor count per student
+- `courses` — course catalogue
+- `enrollments` — student ↔ course with grade/points
+- `reviews` — anonymous course ratings
+- `complaints` — student complaints
+- `graduation_requests` — graduation applications
+- `applications` — new user applications
+- `semester_config` — current semester number + phase
