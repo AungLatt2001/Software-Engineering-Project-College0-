@@ -24,7 +24,8 @@ export default function MyCourses() {
 
   if (!data) return <div className="loading">Loading…</div>;
 
-  const { current_enrollments, all_sections, enrolled_section_ids, waitlisted_ids } = data;
+  const { current_enrollments, all_sections, enrolled_section_ids, waitlisted_ids, special_reg } = data;
+  const canEnroll = sem?.phase === 'registration' || (sem?.phase === 'running' && special_reg);
 
   return (
     <>
@@ -32,6 +33,13 @@ export default function MyCourses() {
         <h1>My Courses</h1>
         <p>Manage your course registrations for {sem?.term_name} {sem?.year}.</p>
       </div>
+
+      {special_reg && sem?.phase === 'running' && (
+        <div className="alert alert-warning" style={{ marginBottom: 16 }}>
+          ⚡ <strong>Special Re-Registration:</strong> One or more of your courses were cancelled due to low enrollment.
+          You have a one-time opportunity to enroll in another open section. Please choose a replacement course below.
+        </div>
+      )}
 
       {msg && <div className="alert alert-info">{msg}</div>}
 
@@ -65,9 +73,11 @@ export default function MyCourses() {
         </table>
       </div>
 
-      {sem?.phase === 'registration' && (
+      {canEnroll && (
         <>
-          <div className="section-title" style={{ marginTop: 24 }}>Available Sections</div>
+          <div className="section-title" style={{ marginTop: 24 }}>
+            {special_reg && sem?.phase === 'running' ? '⚡ Special Re-Registration — Available Sections' : 'Available Sections'}
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -101,6 +111,12 @@ export default function MyCourses() {
             </table>
           </div>
         </>
+      )}
+
+      {!canEnroll && (
+        <div className="alert alert-info" style={{ marginTop: 16 }}>
+          Enrollment is only available during the <strong>Registration</strong> phase. Current phase: <strong>{sem?.phase}</strong>.
+        </div>
       )}
     </>
   );

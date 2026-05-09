@@ -114,6 +114,7 @@ body {
   transition: background 0.15s; font-family: inherit;
 }
 .btn-secondary:hover { background: #e5e7eb; }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
 .btn-block { display: block; width: 100%; }
 
@@ -182,6 +183,7 @@ tr:hover td { background: #fafafa; }
 .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
 .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
 
 /* INFO BOX */
 .info-box { background: var(--blue-soft); border: 1px solid #bfdbfe; color: #1e40af; font-size: 0.8rem; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
@@ -190,8 +192,6 @@ tr:hover td { background: #fafafa; }
 .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 0; }
 .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--muted); font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s; }
 .tab-btn.active { color: var(--blue-mid); border-bottom-color: var(--blue-mid); }
-.tab-pane { display: none; }
-.tab-pane.active { display: block; }
 
 /* PANEL */
 .panel { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
@@ -226,16 +226,57 @@ tr:hover td { background: #fafafa; }
 .demo-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; font-size: 0.78rem; color: #92400e; margin-bottom: 16px; line-height: 1.6; }
 .demo-box code { background: rgba(0,0,0,0.08); padding: 1px 5px; border-radius: 4px; font-family: monospace; }
 
-/* LOGIN MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: none; align-items: center; justify-content: center; }
+/* MODALS — shared overlay */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 200; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
 .modal-overlay.open { display: flex; }
+
+/* LOGIN MODAL (old card style kept for compat) */
 .modal-card { background: #fff; border-radius: 16px; padding: 36px 40px; width: 100%; max-width: 440px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-.modal-close { position: absolute; top: 16px; right: 20px; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); }
 .modal-logo { font-size: 1.4rem; font-weight: 800; color: var(--blue); margin-bottom: 4px; }
 .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
 .modal-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; }
-.modal-back { text-align: center; margin-top: 16px; font-size: 0.78rem; }
-.modal-back a { color: var(--blue-mid); text-decoration: none; }
+
+/* GENERIC MODAL BOX */
+.modal-box {
+  background: #fff; border-radius: 14px; width: 100%; max-width: 640px;
+  max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px; border-bottom: 1.5px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-header h2 { font-size: 1rem; font-weight: 700; }
+.modal-close {
+  background: none; border: none; font-size: 1.1rem; cursor: pointer;
+  color: var(--muted); line-height: 1; padding: 4px;
+}
+.modal-body { padding: 22px 24px; overflow-y: auto; flex: 1; }
+
+/* TUTORIAL MODAL */
+.tutorial-modal {
+  background: #fff; border-radius: 18px; width: 100%; max-width: 460px;
+  padding: 40px 44px; box-shadow: 0 24px 70px rgba(0,0,0,0.25);
+  text-align: center;
+}
+.tutorial-icon { font-size: 3rem; margin-bottom: 12px; }
+.tutorial-step-count { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+.tutorial-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+.tutorial-body { font-size: 0.88rem; color: var(--muted); line-height: 1.65; margin-bottom: 24px; }
+.tutorial-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 24px; }
+.tutorial-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; transition: background 0.15s; }
+.tutorial-dot.active { background: var(--blue-mid); }
+.tutorial-actions { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.btn-skip { background: none; border: none; font-size: 0.78rem; color: var(--muted); cursor: pointer; font-family: inherit; padding: 6px; text-decoration: underline; }
+.btn-skip:hover { color: var(--text); }
+
+/* MODAL CLOSE */
+.modal-close-x { position: absolute; top: 16px; right: 20px; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); }
 
 /* LOADING / ERROR */
 .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 0.9rem; }

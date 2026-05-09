@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import api from './api';
 import Layout from './components/Layout';
+import TutorialModal from './components/TutorialModal';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import MyCourses from './pages/MyCourses';
@@ -27,23 +28,36 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [sem, setSem] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     api.get('/me').then(r => {
       setUser(r.data.user);
       setSem(r.data.sem);
+      if (r.data.user?.role === 'student' && r.data.first_login_required) {
+        setShowTutorial(true);
+      }
     }).catch(() => {
       api.get('/sem').then(r => setSem(r.data)).catch(() => {});
     }).finally(() => setLoading(false));
   }, []);
+
+  const handleLogin = (userData, semData, firstLogin) => {
+    setUser(userData);
+    setSem(semData);
+    if (userData?.role === 'student' && firstLogin) {
+      setShowTutorial(true);
+    }
+  };
 
   const logout = () => {
     api.post('/logout').then(() => { setUser(null); window.location.href = '/'; });
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, sem, setSem, loading, logout, loginOpen, setLoginOpen }}>
+    <AuthContext.Provider value={{ user, setUser, sem, setSem, loading, logout, loginOpen, setLoginOpen, handleLogin }}>
       <BrowserRouter>
+        {showTutorial && <TutorialModal onDismiss={() => setShowTutorial(false)} />}
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />

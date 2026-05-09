@@ -2,11 +2,131 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../App';
 import api from '../api';
 
+function StudentRecordModal({ student, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Academic Record — {student.name}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="stats-row" style={{ marginBottom: 16 }}>
+            <div className="stat-card" style={{ flex: 1 }}>
+              <div className="stat-label">Cum. GPA</div>
+              <div className="stat-value green">{Number(student.cumulative_gpa).toFixed(3)}</div>
+            </div>
+            <div className="stat-card" style={{ flex: 1 }}>
+              <div className="stat-label">Sem. GPA</div>
+              <div className="stat-value green">{Number(student.semester_gpa).toFixed(3)}</div>
+            </div>
+            <div className="stat-card" style={{ flex: 1 }}>
+              <div className="stat-label">Warnings</div>
+              <div className="stat-value" style={{ color: student.warning_count > 0 ? 'var(--orange)' : undefined }}>
+                {student.warning_count}/3
+              </div>
+            </div>
+            <div className="stat-card" style={{ flex: 1 }}>
+              <div className="stat-label">Honors</div>
+              <div className="stat-value" style={{ color: '#7c3aed' }}>{student.honor_count}</div>
+            </div>
+          </div>
+          <div className="section-title">Grade History</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid var(--border)' }}>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600 }}>Code</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600 }}>Title</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600 }}>Grade</th>
+                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600 }}>Semester</th>
+              </tr>
+            </thead>
+            <tbody>
+              {student.grade_history.length === 0 && (
+                <tr><td colSpan={4} style={{ padding: '14px 8px', color: 'var(--muted)' }}>No completed courses.</td></tr>
+              )}
+              {student.grade_history.map((h, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '7px 8px' }}><strong>{h.code}</strong></td>
+                  <td style={{ padding: '7px 8px' }}>{h.title}</td>
+                  <td style={{ padding: '7px 8px', fontWeight: 700 }}>{h.letter_grade}</td>
+                  <td style={{ padding: '7px 8px', color: 'var(--muted)' }}>{h.term_name} {h.year}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComplaintModal({ student, sectionId, onClose, onSubmit }) {
+  const [action, setAction] = useState('warn');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!text.trim()) { setErr('Please describe the issue.'); return; }
+    setBusy(true); setErr('');
+    try {
+      await api.post('/instructor/student-complaint', {
+        student_id: student.student_id,
+        section_id: sectionId,
+        requested_action: action,
+        complaint_text: text,
+      });
+      onSubmit('Complaint filed. The Registrar will review it and take action.');
+      onClose();
+    } catch (err) {
+      setErr(err.response?.data?.msg || 'Error filing complaint.');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>File Complaint Against {student.name}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {err && <div className="alert alert-error" style={{ marginBottom: 12 }}>{err}</div>}
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Requested Action</label>
+              <select value={action} onChange={e => setAction(e.target.value)}>
+                <option value="warn">Warn the student</option>
+                <option value="deregister">De-register the student from my class</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Describe the issue in detail..." style={{ minHeight: 100 }} required />
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: 14 }}>
+              Note: The Registrar will review this complaint and may either take the requested action against the student, or issue a warning to you if the complaint is deemed unfounded.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="submit" className="btn-primary" disabled={busy}>Submit Complaint</button>
+              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Instructor() {
   const { user, sem } = useAuth();
   const [data, setData] = useState(null);
   const [grades, setGrades] = useState({});
   const [msg, setMsg] = useState('');
+  const [viewStudent, setViewStudent] = useState(null);
+  const [complaintTarget, setComplaintTarget] = useState(null);
 
   const load = () => api.get('/instructor').then(r => setData(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -25,9 +145,24 @@ export default function Instructor() {
 
   return (
     <>
+      {viewStudent && <StudentRecordModal student={viewStudent} onClose={() => setViewStudent(null)} />}
+      {complaintTarget && (
+        <ComplaintModal
+          student={complaintTarget.student}
+          sectionId={complaintTarget.sectionId}
+          onClose={() => setComplaintTarget(null)}
+          onSubmit={m => setMsg(m)}
+        />
+      )}
+
       <div className="page-header">
         <h1>My Classes</h1>
         <p>{user?.first_name} {user?.last_name} · Instructor · {sem?.term_name} {sem?.year}</p>
+        {data.instructor?.suspension_next_semester === 1 && (
+          <div className="alert alert-error" style={{ marginTop: 12 }}>
+            ⚠ Your teaching privileges are suspended for the next semester due to all assigned courses being cancelled.
+          </div>
+        )}
       </div>
 
       {msg && <div className="alert alert-success">{msg}</div>}
@@ -40,6 +175,9 @@ export default function Instructor() {
         <div className="table-wrap" key={sd.section.section_id} style={{ marginBottom: 28 }}>
           <div className="table-title">
             {sd.section.code} — {sd.section.title}
+            {sd.section.status === 'cancelled' && (
+              <span style={{ marginLeft: 10, fontSize: '0.75rem', background: 'var(--red)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>CANCELLED</span>
+            )}
             <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 400, marginLeft: 12 }}>
               {sd.section.schedule_slot} · {sd.section.room} · {sd.section.enrolled_count}/{sd.section.capacity} enrolled
             </span>
@@ -47,18 +185,24 @@ export default function Instructor() {
           <table>
             <thead>
               <tr>
-                <th>Student ID</th><th>Name</th><th>Status</th><th>Grade</th>
+                <th>Student ID</th><th>Name</th><th>Cum. GPA</th><th>Warnings</th>
+                <th>Status</th><th>Grade</th>
                 {sem?.phase === 'grading' && <th>Assign Grade</th>}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {sd.students.length === 0 && (
-                <tr><td colSpan={5} style={{ color: 'var(--muted)', padding: 16 }}>No students enrolled.</td></tr>
+                <tr><td colSpan={8} style={{ color: 'var(--muted)', padding: 16 }}>No students enrolled.</td></tr>
               )}
               {sd.students.map(s => (
                 <tr key={s.student_id}>
                   <td>#{s.student_id}</td>
                   <td>{s.name}</td>
+                  <td style={{ color: 'var(--green)', fontWeight: 600 }}>{Number(s.cumulative_gpa || 0).toFixed(3)}</td>
+                  <td style={{ color: s.warning_count > 0 ? 'var(--orange)' : undefined, fontWeight: s.warning_count > 0 ? 600 : undefined }}>
+                    {s.warning_count}/3
+                  </td>
                   <td>{s.enrollment_status}</td>
                   <td>{s.letter_grade || '—'}</td>
                   {sem?.phase === 'grading' && (
@@ -78,6 +222,18 @@ export default function Instructor() {
                       </div>
                     </td>
                   )}
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn-secondary btn-sm" onClick={() => setViewStudent(s)}>Records</button>
+                      <button
+                        className="btn-sm"
+                        style={{ background: '#fee2e2', color: 'var(--red)', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                        onClick={() => setComplaintTarget({ student: s, sectionId: sd.section.section_id })}
+                      >
+                        Complain
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

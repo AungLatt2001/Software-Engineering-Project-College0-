@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import api from '../api';
 
 export default function LoginModal() {
-  const { loginOpen, setLoginOpen, setUser, setSem } = useAuth();
+  const { loginOpen, setLoginOpen, handleLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [error, setError] = useState('');
@@ -16,8 +16,7 @@ export default function LoginModal() {
     setBusy(true); setError('');
     try {
       const r = await api.post('/login', { email, password: pw });
-      setUser(r.data.user);
-      setSem(r.data.sem);
+      handleLogin(r.data.user, r.data.sem, r.data.first_login_required);
       setLoginOpen(false);
       setEmail(''); setPw('');
       const role = r.data.user.role;

@@ -197,10 +197,28 @@ def get_db():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
+def migrate_db():
+    """Add new columns to existing DB without destroying data."""
+    conn = get_db()
+    migrations = [
+        "ALTER TABLE Student ADD COLUMN special_reg_eligible INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE Complaint ADD COLUMN complaint_type TEXT NOT NULL DEFAULT 'general'",
+        "ALTER TABLE Complaint ADD COLUMN requested_action TEXT",
+        "ALTER TABLE Complaint ADD COLUMN section_id INTEGER",
+    ]
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+
 def init_db():
     conn = get_db()
     conn.executescript(SCHEMA)
     conn.commit()
+    migrate_db()
 
     if conn.execute("SELECT COUNT(*) as c FROM User").fetchone()["c"] > 0:
         conn.close()
