@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: college0
+    env: docker
+    plan: starter
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/public
+    disk:
+      name: college0-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: COLLEGE0_SECRET
+        generateValue: true
+      - key: COLLEGE0_CORS_ORIGINS
+        value: "*"
+      - key: COLLEGE0_DB_PATH
+        value: /data/college0.db
+      - key: PORT
+        value: "5001"
