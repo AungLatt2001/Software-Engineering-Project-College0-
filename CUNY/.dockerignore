@@ -1,0 +1,12 @@
+**/node_modules
+**/.DS_Store
+**/__pycache__
+**/__MACOSX
+**/*.pyc
+**/.git
+Frontend/build
+Database/college0.db
+Backend/college0.db
+*.log
+.env
+.venv
