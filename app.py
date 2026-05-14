@@ -7,7 +7,7 @@ import json
 import urllib.request
 import urllib.error
 
-app = Flask(__name__, static_folder="client/build", static_url_path="")
+app = Flask(__name__, static_folder=None)
 app.secret_key = "collegeo-secret-2024"
 
 BUILD_DIR = os.path.join(os.path.dirname(__file__), "client", "build")
@@ -699,7 +699,7 @@ def api_instructor():
         sections_data.append({"section": dict(sec), "students": students})
 
     db.close()
-    return jsonify({"sections_data": sections_data, "instructor": instr})
+    return jsonify({"sections_data": sections_data, "instructor": instr, "sem": sem_dict(sem)})
 
 @app.route("/api/instructor/grade", methods=["POST"])
 def api_grade():

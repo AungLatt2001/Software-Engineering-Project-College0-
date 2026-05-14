@@ -121,7 +121,7 @@ function ComplaintModal({ student, sectionId, onClose, onSubmit }) {
 }
 
 export default function Instructor() {
-  const { user, sem } = useAuth();
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [grades, setGrades] = useState({});
   const [msg, setMsg] = useState('');
@@ -130,6 +130,10 @@ export default function Instructor() {
 
   const load = () => api.get('/instructor').then(r => setData(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  // Use the semester returned by the instructor API — not the global context.
+  // The active semester in context may differ from the one the instructor's sections belong to.
+  const sem = data?.sem;
 
   const saveGrade = async (enrollmentId) => {
     const grade = grades[enrollmentId];
