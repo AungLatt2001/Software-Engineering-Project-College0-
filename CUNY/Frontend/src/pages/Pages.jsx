@@ -175,11 +175,6 @@ export function LoginModal({ onSuccess, onClose }) {
 
         {err && <Alert variant="danger">{err}</Alert>}
 
-        <div className="alert alert-info" style={{ marginBottom: 14 }}>
-          <strong>Demo credentials</strong> — all passwords: <code>pass123</code><br />
-          Students: S101–S110 · Instructors: I01–I03 · Registrar: REG01 / <code>admin</code>
-        </div>
-
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label className="form-label">User ID</label>
@@ -231,9 +226,9 @@ const TUTORIAL_STEPS = {
   ],
   Registrar: [
     { title: 'Registrar Tour', body: 'You administer College0. This is a quick walkthrough.' },
-    { title: '📊 Overview', body: 'Advance the semester phase from here (SETUP → REGISTRATION → RUNNING → GRADING → CLOSED → next semester). Each transition triggers automatic rules per the College0 charter.' },
+    { title: '📊 Overview', body: 'Advance the semester phase from here (SETUP → REGISTRATION → RUNNING → GRADING → CLOSED → next semester). Each transition triggers automatic rules per the College0 charter. You can also issue warnings to any student or instructor and set the program quota from this page.' },
     { title: '📚 Manage Courses', body: 'Create courses, assign instructors, set capacities, and mark core courses.' },
-    { title: '👤 All Students', body: 'View every student record. Issue warnings, clear interview holds, see who has unpaid fines.' },
+    { title: '👤 All Students', body: 'View every student record. Clear interview holds, see who has unpaid fines, and edit or delete students.' },
     { title: '🎓 Faculty Review', body: 'Instructors with extreme class GPAs (>3.5 or <2.5) appear here for questioning. Clear, warn, or fire them.' },
     { title: '📋 Applications, Complaints & Reviews', body: 'Approve/reject applications (with justification when overriding rules), resolve complaints, moderate reviews, and manage the taboo word list.' },
   ],
@@ -1021,12 +1016,23 @@ export function RegistrarDashboard() {
   const [actions, setActions] = useState([]);
   const [quotaInput, setQuotaInput] = useState('');
   const [semList, setSemList] = useState([]);
+  const [warn, setWarn] = useState({ userId: '', reason: '' });
 
   const load = useCallback(() => {
     api.get('/registrar/overview').then(r => setData(r.data)).catch(() => {});
     api.get('/registrar/semesters').then(r => setSemList(r.data.semesters || [])).catch(() => {});
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const issueWarn = async e => {
+    e.preventDefault(); setMsg(null);
+    try {
+      const r = await api.post('/registrar/warn', warn);
+      setMsg({ ok: true, text: r.data.msg });
+      setWarn({ userId: '', reason: '' });
+      load();
+    } catch (e) { setMsg({ ok: false, text: e.response?.data?.error || 'Error' }); }
+  };
 
   const advance = async () => {
     setActions([]);
@@ -1142,6 +1148,22 @@ export function RegistrarDashboard() {
             value={quotaInput} onChange={e => setQuotaInput(e.target.value)} />
           <button className="btn btn-primary" onClick={setQuota}>Update</button>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="section-title">Issue Warning</div>
+        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
+          Issue a warning to any student or instructor. Three warnings result in suspension.
+        </p>
+        <form onSubmit={issueWarn}>
+          <div className="grid-2 gap-12">
+            <div className="form-group"><label className="form-label">User ID</label>
+              <input className="form-input" placeholder="Student or Instructor ID" value={warn.userId} onChange={e => setWarn(w => ({ ...w, userId: e.target.value }))} required /></div>
+            <div className="form-group"><label className="form-label">Reason</label>
+              <input className="form-input" placeholder="Reason for warning" value={warn.reason} onChange={e => setWarn(w => ({ ...w, reason: e.target.value }))} required /></div>
+          </div>
+          <button className="btn btn-warning" type="submit">Issue Warning</button>
+        </form>
       </div>
     </div>
   );
@@ -1318,7 +1340,6 @@ export function RegistrarCourses() {
 
 export function RegistrarStudents() {
   const [students, setStudents] = useState([]);
-  const [warn, setWarn] = useState({ userId: '', reason: '' });
   const [msg, setMsg] = useState(null);
   const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
@@ -1326,11 +1347,6 @@ export function RegistrarStudents() {
   const load = useCallback(() => { api.get('/registrar/students').then(r => setStudents(r.data)); }, []);
   useEffect(() => { load(); }, [load]);
 
-  const issueWarn = async e => {
-    e.preventDefault(); setMsg(null);
-    try { const r = await api.post('/registrar/warn', warn); setMsg({ ok: true, text: r.data.msg }); setWarn({ userId: '', reason: '' }); load(); }
-    catch (e) { setMsg({ ok: false, text: e.response?.data?.error || 'Error' }); }
-  };
   const clearInterview = async uid => {
     try { const r = await api.post(`/registrar/clear-interview/${uid}`); setMsg({ ok: r.data.ok, text: r.data.msg }); load(); }
     catch (e) { setMsg({ ok: false, text: 'Error' }); }
@@ -1447,19 +1463,6 @@ export function RegistrarStudents() {
           </div>
         </Modal>
       )}
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <div className="section-title">Issue Warning</div>
-        <form onSubmit={issueWarn}>
-          <div className="grid-2 gap-12">
-            <div className="form-group"><label className="form-label">User ID</label>
-              <input className="form-input" placeholder="Student or Instructor ID" value={warn.userId} onChange={e => setWarn(w => ({ ...w, userId: e.target.value }))} required /></div>
-            <div className="form-group"><label className="form-label">Reason</label>
-              <input className="form-input" placeholder="Reason for warning" value={warn.reason} onChange={e => setWarn(w => ({ ...w, reason: e.target.value }))} required /></div>
-          </div>
-          <button className="btn btn-warning" type="submit">Issue Warning</button>
-        </form>
-      </div>
     </div>
   );
 }
@@ -1543,7 +1546,7 @@ export function RegistrarInstructors() {
 
       <Table
         headers={['ID', 'Name', 'Warnings', 'Status', 'Actions']}
-        rows={list.map(i => [
+        rows={[...list].sort((a, b) => a.userId.localeCompare(b.userId, undefined, { numeric: true })).map(i => [
           i.userId, i.name, `${i.warnings}/3`, statusOf(i),
           <div key={i.userId} className="flex gap-8" style={{ flexWrap: 'wrap' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => startEdit(i)}>Edit</button>
@@ -1806,11 +1809,34 @@ export function RegistrarActions() {
               <label className="form-label">Complaint ID</label>
               <input className="form-input" placeholder="e.g. C001" value={cid} onChange={e => setCid(e.target.value)} />
             </div>
-            <div className="flex gap-10" style={{ flexWrap: 'wrap' }}>
-              <button className="btn btn-ghost" onClick={() => resolveComplaint('dismiss')}>Dismiss</button>
-              <button className="btn btn-danger" onClick={() => resolveComplaint('punish')}>Punish Against-Party</button>
-              <button className="btn btn-warning" onClick={() => resolveComplaint('warn_instructor')}>Warn Instructor (unjustified)</button>
-            </div>
+            {(() => {
+              // Look up the typed complaint so we can scope Deregister to student
+              // targets only (spec: instructors may request warn OR de-register
+              // the student). student_vs_student and instructor_vs_student both
+              // target a student; student_vs_instructor does not.
+              const selected = complaints.find(c => c.complaintId === cid.trim());
+              const targetIsStudent = selected && selected.type !== 'student_vs_instructor';
+              return (
+                <div className="flex gap-10" style={{ flexWrap: 'wrap' }}>
+                  <button className="btn btn-ghost" onClick={() => resolveComplaint('dismiss')}>Dismiss</button>
+                  <button className="btn btn-danger" onClick={() => resolveComplaint('punish')}>Warn Against-Party</button>
+                  {targetIsStudent && (
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => {
+                        if (window.confirm(`Deregister student ${selected.againstId} from all current-semester courses? This cannot be undone from this screen.`)) {
+                          resolveComplaint('deregister');
+                        }
+                      }}
+                      title="Drop the student from all enrolled courses this semester"
+                    >
+                      Deregister Student
+                    </button>
+                  )}
+                  <button className="btn btn-warning" onClick={() => resolveComplaint('warn_instructor')}>Warn Instructor (unjustified)</button>
+                </div>
+              );
+            })()}
           </div>
         </>
       )}
@@ -1891,11 +1917,20 @@ export function AIPage() {
     'Who are my students?',
     'What is my class average?',
   ];
+  const registrarSuggestions = [
+    'How many pending applications?',
+    'Which instructors have warnings?',
+    'Which courses are below the cancellation threshold?',
+    'How many open complaints?',
+    'What is the current semester and phase?',
+  ];
   const suggestions = user?.role === 'Student'
     ? [...studentSuggestions, ...generalSuggestions]
     : user?.role === 'Instructor'
       ? [...instructorSuggestions, ...generalSuggestions]
-      : generalSuggestions;
+      : user?.role === 'Registrar'
+        ? [...registrarSuggestions, ...generalSuggestions]
+        : generalSuggestions;
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -1913,7 +1948,9 @@ export function AIPage() {
                 ? "Try: 'What is my current GPA?' or 'How do course reviews work?'"
                 : user?.role === 'Instructor'
                   ? "Try: 'Who are my students?' or 'What is my class average?'"
-                  : "Try: 'What are the graduation requirements?'"
+                  : user?.role === 'Registrar'
+                    ? "Try: 'How many pending applications?' or 'Which instructors have warnings?'"
+                    : "Try: 'What are the graduation requirements?'"
             } value={q} onChange={e => setQ(e.target.value)} />
           </div>
           <div className="flex gap-10">

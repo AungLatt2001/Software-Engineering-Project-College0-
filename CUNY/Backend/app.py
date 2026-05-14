@@ -2864,6 +2864,176 @@ def _personalized_answer(db, user, role, question: str):
                 lines.append(f"  • {code}: {avg:.2f} ({len(pts)} graded)")
             return ("\n".join(lines), "live")
 
+    if role == "Registrar":
+        # Spec: "a registrar can see everything." The registrar AI handles
+        # cross-cutting administrative questions that need live DB lookups.
+
+        # GPA / record lookup by student name or ID:
+        #   "what is S101's GPA", "GPA of John Doe", "show me student S101"
+        # Trigger on (gpa | student | record) + a candidate identifier in the
+        # question (student ID like S\d+, or a name token that resolves).
+        if ("gpa" in q or "record" in q or "student" in q):
+            target = None
+            # Try student ID pattern first (S followed by digits)
+            id_match = re.search(r"\b([Ss]\d{2,4})\b", question)
+            if id_match:
+                sid = id_match.group(1).upper()
+                target = db.execute(
+                    "SELECT u.user_id, u.name, s.gpa, s.warnings, s.honor_count, "
+                    "s.suspended, s.terminated, s.graduated "
+                    "FROM users u JOIN students s ON s.user_id = u.user_id "
+                    "WHERE u.user_id = ?", (sid,)).fetchone()
+            # If no ID match, try name lookup (any student whose name is a
+            # substring of the question, case-insensitive)
+            if not target:
+                candidates = db.execute(
+                    "SELECT u.user_id, u.name, s.gpa, s.warnings, s.honor_count, "
+                    "s.suspended, s.terminated, s.graduated "
+                    "FROM users u JOIN students s ON s.user_id = u.user_id"
+                ).fetchall()
+                ql = q
+                for c in candidates:
+                    if c["name"].lower() in ql:
+                        target = c
+                        break
+            if target:
+                status_bits = []
+                if target["graduated"]:  status_bits.append("graduated")
+                if target["terminated"]: status_bits.append("terminated")
+                if target["suspended"]:  status_bits.append("suspended")
+                status = ", ".join(status_bits) if status_bits else "active"
+                return (f"{target['user_id']} ({target['name']}): "
+                        f"GPA {target['gpa']:.2f}, "
+                        f"warnings {target['warnings']}/3, "
+                        f"honor count {target['honor_count']}, "
+                        f"status: {status}.", "live")
+
+        # Pending applications count
+        if "pending" in q and ("application" in q or "applicant" in q):
+            row = db.execute(
+                "SELECT COUNT(*) AS n FROM applications WHERE status='Pending'"
+            ).fetchone()
+            n = row["n"] if row else 0
+            if n == 0:
+                return ("There are no pending applications.", "live")
+            by_role = db.execute(
+                "SELECT role, COUNT(*) AS n FROM applications "
+                "WHERE status='Pending' GROUP BY role"
+            ).fetchall()
+            lines = [f"There are {n} pending application(s):"]
+            for r in by_role:
+                lines.append(f"  • {r['role']}: {r['n']}")
+            return ("\n".join(lines), "live")
+
+        # Instructors with warnings (or specific instructor's warnings)
+        if "instructor" in q and ("warning" in q or "warned" in q):
+            # Specific instructor by ID?
+            id_match = re.search(r"\b([Ii]\d{1,3})\b", question)
+            if id_match:
+                iid = id_match.group(1).upper()
+                r = db.execute(
+                    "SELECT u.name, i.warnings, i.suspended, i.fired "
+                    "FROM users u JOIN instructors i ON i.user_id = u.user_id "
+                    "WHERE u.user_id=?", (iid,)).fetchone()
+                if r:
+                    status = "fired" if r["fired"] else "suspended" if r["suspended"] else "active"
+                    return (f"{iid} ({r['name']}): {r['warnings']}/3 warnings, "
+                            f"status: {status}.", "live")
+            # Otherwise: list all instructors with ≥1 warning
+            rows = db.execute(
+                "SELECT u.user_id, u.name, i.warnings, i.suspended, i.fired "
+                "FROM users u JOIN instructors i ON i.user_id = u.user_id "
+                "WHERE i.warnings > 0 "
+                "ORDER BY i.warnings DESC, u.user_id"
+            ).fetchall()
+            if not rows:
+                return ("No instructors currently have any warnings.", "live")
+            lines = [f"{len(rows)} instructor(s) with warnings:"]
+            for r in rows:
+                tag = " [FIRED]" if r["fired"] else " [SUSPENDED]" if r["suspended"] else ""
+                lines.append(f"  • {r['user_id']} {r['name']}: {r['warnings']}/3{tag}")
+            return ("\n".join(lines), "live")
+
+        # Courses below the 3-student cancellation threshold (running phase only,
+        # but we report the count regardless — registrar can act on it)
+        if ("course" in q or "class" in q) and (
+                "below" in q or "under" in q or "cancel" in q or "low" in q
+                or "fewer" in q or "less than" in q or "threshold" in q):
+            state = _state(db)
+            rows = db.execute("""
+                SELECT c.code, c.name, COUNT(e.student_id) AS n_enrolled
+                FROM courses c
+                LEFT JOIN enrollments e
+                  ON e.course_code = c.code
+                 AND e.semester = ?
+                 AND e.status = 'enrolled'
+                WHERE c.cancelled = 0
+                GROUP BY c.code, c.name
+                HAVING COUNT(e.student_id) < 3
+                ORDER BY n_enrolled, c.code
+            """, (state["semester"],)).fetchall()
+            if not rows:
+                return ("All active courses have ≥3 enrolled students. "
+                        "No courses are at risk of cancellation.", "live")
+            lines = [f"{len(rows)} course(s) below the 3-student threshold "
+                     f"(at risk of cancellation):"]
+            for r in rows:
+                lines.append(f"  • {r['code']} — {r['name']}: {r['n_enrolled']} enrolled")
+            return ("\n".join(lines), "live")
+
+        # Open complaint count
+        if "complaint" in q and ("open" in q or "unresolved" in q or "pending" in q
+                                  or "how many" in q):
+            row = db.execute(
+                "SELECT COUNT(*) AS n FROM complaints WHERE resolved = 0"
+            ).fetchone()
+            n = row["n"] if row else 0
+            if n == 0:
+                return ("There are no open complaints.", "live")
+            # Break down by type
+            by_type = db.execute(
+                "SELECT type, COUNT(*) AS n FROM complaints "
+                "WHERE resolved = 0 GROUP BY type"
+            ).fetchall()
+            lines = [f"There are {n} open complaint(s):"]
+            for r in by_type:
+                label = {
+                    "instructor_vs_student": "instructor → student (mandatory action)",
+                    "student_vs_student":    "student → student",
+                    "student_vs_instructor": "student → instructor",
+                }.get(r["type"], r["type"])
+                lines.append(f"  • {label}: {r['n']}")
+            return ("\n".join(lines), "live")
+
+        # Waitlist for a specific course: "waitlist for CSC 22000"
+        if "waitlist" in q:
+            code_match = re.search(r"\b([A-Z]{2,4}\s*\d{3,5})\b", question)
+            if code_match:
+                code = code_match.group(1).upper().replace("  ", " ")
+                rows = db.execute("""
+                    SELECT w.position, u.user_id, u.name
+                    FROM waitlist w
+                    JOIN users u ON u.user_id = w.student_id
+                    WHERE w.course_code = ?
+                    ORDER BY w.position
+                """, (code,)).fetchall()
+                if not rows:
+                    return (f"Waitlist for {code} is empty.", "live")
+                lines = [f"Waitlist for {code} ({len(rows)} student(s)):"]
+                for r in rows:
+                    lines.append(f"  • #{r['position']}: {r['user_id']} {r['name']}")
+                return ("\n".join(lines), "live")
+
+        # Current semester / phase
+        if ("current" in q or "what" in q) and ("semester" in q or "phase" in q
+                                                  or "period" in q):
+            state = _state(db)
+            return (f"Current semester: {state.get('season', '')} {state.get('year', '')} "
+                    f"(internal #{state['semester']}). "
+                    f"Phase: {state['phase']}. "
+                    f"Program quota: {state.get('program_quota', 'n/a')}.",
+                    "live")
+
     return None, None
 
 
@@ -2945,10 +3115,21 @@ def api_ai():
         if ans:
             return jsonify({"answer": ans, "source": "live", "local": True})
 
-    # 2) Vector search over the KB. Scope: visitors get "public" only;
-    #    students and instructors also get "public" (the spec scopes their
-    #    *additional* questions to live data, which we already handled above).
-    hits = _kb_search(question, scope_filter={"public"}, top_k=3)
+    # 2) Vector search over the KB. Scope is built dynamically from the user's
+    #    role. Everyone gets "public" docs; authenticated users get their
+    #    role-scoped docs as well; registrars get everything. No scoped docs
+    #    exist in the KB today, but the filter is wired so they can be added
+    #    later without re-plumbing this endpoint.
+    scope = {"public"}
+    if user:
+        if role == "Student":
+            scope.add("student")
+        elif role == "Instructor":
+            scope.add("instructor")
+        elif role == "Registrar":
+            scope.update({"student", "instructor", "registrar"})
+
+    hits = _kb_search(question, scope_filter=scope, top_k=3)
     best_score = hits[0][0] if hits else 0.0
 
     # Empirically, TF-IDF cosine on these short docs is ~0.15–0.50 for good
