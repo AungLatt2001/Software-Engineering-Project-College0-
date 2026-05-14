@@ -169,28 +169,41 @@ def _gen_id(db, table: str, id_col: str, prefix: str, width: int = 3) -> str:
     return f"{prefix}{(max(nums) + 1 if nums else 1):0{width}d}"
 
 
-def _course_to_dict(row, enrolled_count=None, rating=None):
-    """Shape a courses row the way the frontend expects."""
+def _course_to_dict(row, enrolled_count=None, rating=None, instructor_name=None):
+    """Shape a courses row the way the frontend expects.
+
+    `instructor_name` is optional — when supplied, it's emitted alongside
+    `instructorId` so the UI can render the human-readable name.
+    """
     # row["prerequisites"] only exists if the DB has the column (post-migration).
     try:
         prereq_str = row["prerequisites"] or ""
     except (IndexError, KeyError):
         prereq_str = ""
     out = {
-        "code":          row["code"],
-        "name":          row["name"],
-        "instructorId":  row["instructor_id"],
-        "timeSlot":      row["time_slot"],
-        "capacity":      row["capacity"],
-        "isCore":        bool(row["is_core"]),
-        "cancelled":     bool(row["cancelled"]),
-        "prerequisites": _parse_prereqs(prereq_str),
+        "code":           row["code"],
+        "name":           row["name"],
+        "instructorId":   row["instructor_id"],
+        "instructorName": instructor_name,
+        "timeSlot":       row["time_slot"],
+        "capacity":       row["capacity"],
+        "isCore":         bool(row["is_core"]),
+        "cancelled":      bool(row["cancelled"]),
+        "prerequisites":  _parse_prereqs(prereq_str),
     }
     if enrolled_count is not None:
         out["enrolled"] = enrolled_count
     if rating is not None:
         out["rating"] = rating
     return out
+
+
+def _instructor_name(db, instructor_id):
+    """Look up an instructor's display name (or None)."""
+    if not instructor_id:
+        return None
+    row = db.execute("SELECT name FROM users WHERE user_id=?", (instructor_id,)).fetchone()
+    return row["name"] if row else None
 
 
 def _enrolled_count(db, code, semester):
@@ -421,7 +434,10 @@ def _issue_warning(db, user_id, reason):
                 (new_warn, sem + 1, SUSPENSION_FINE, user_id),
             )
             return True
-        db.execute("UPDATE students SET warnings=? WHERE user_id=?", (new_warn, user_id))
+        # Only update the counter if NOT already suspended. Once suspended,
+        # further warnings don't increment the counter (they're just logged).
+        elif not (row and row["suspended"]):
+            db.execute("UPDATE students SET warnings=? WHERE user_id=?", (new_warn, user_id))
     elif role["role"] == "Instructor":
         row = db.execute("SELECT warnings, suspended FROM instructors WHERE user_id=?",
                          (user_id,)).fetchone()
@@ -433,7 +449,10 @@ def _issue_warning(db, user_id, reason):
                 (new_warn, user_id),
             )
             return True
-        db.execute("UPDATE instructors SET warnings=? WHERE user_id=?", (new_warn, user_id))
+        # Only update the counter if NOT already suspended. Once suspended,
+        # further warnings don't increment the counter (they're just logged).
+        elif not (row and row["suspended"]):
+            db.execute("UPDATE instructors SET warnings=? WHERE user_id=?", (new_warn, user_id))
     return False
 
 
@@ -456,7 +475,10 @@ def public_home():
     for c in courses_rows:
         cnt = _enrolled_count(db, c["code"], state["semester"])
         rating = _course_rating(db, c["code"])
-        courses.append(_course_to_dict(c, enrolled_count=cnt, rating=rating))
+        courses.append(_course_to_dict(
+            c, enrolled_count=cnt, rating=rating,
+            instructor_name=_instructor_name(db, c["instructor_id"]),
+        ))
         if not c["cancelled"]:
             active_count += 1
 
@@ -654,7 +676,9 @@ def student_courses():
     for code in enrolled_codes:
         c = db.execute("SELECT * FROM courses WHERE code=?", (code,)).fetchone()
         if c:
-            enrolled.append(_course_to_dict(c))
+            enrolled.append(_course_to_dict(
+                c, instructor_name=_instructor_name(db, c["instructor_id"]),
+            ))
 
     all_courses = db.execute("SELECT * FROM courses WHERE cancelled=0 ORDER BY code").fetchall()
     available = []
@@ -665,7 +689,7 @@ def student_courses():
             "SELECT student_id FROM enrollments "
             "WHERE course_code=? AND semester=? AND status='enrolled'",
             (c["code"], sem)).fetchall()]
-        d = _course_to_dict(c)
+        d = _course_to_dict(c, instructor_name=_instructor_name(db, c["instructor_id"]))
         d["enrolled"] = enrolled_list
         available.append(d)
 
@@ -1063,7 +1087,7 @@ def instructor_me():
             (c["code"],)).fetchall()
         waitlist = [r["student_id"] for r in wl_rows]
 
-        cd = _course_to_dict(c)
+        cd = _course_to_dict(c, instructor_name=_instructor_name(db, c["instructor_id"]))
         cd["students"] = students
         cd["enrolled"] = [s["userId"] for s in students]
         cd["waitlist"] = waitlist
@@ -1360,6 +1384,24 @@ def _advance_to_closed(db, sem):
             )
             actions.append(f"Instructor {ir['user_id']} flagged for registrar review (extreme class GPA).")
 
+    # 2b) Spec: "The instructor of any course receiving an average rating <2
+    #     will be warned." Issue one warning per low-rated course.
+    for ir in inst_rows:
+        course_rows = db.execute(
+            "SELECT code FROM courses WHERE instructor_id=? AND cancelled=0",
+            (ir["user_id"],),
+        ).fetchall()
+        for cr in course_rows:
+            rating = _course_rating(db, cr["code"])
+            if rating is not None and rating < 2.0:
+                _issue_warning(
+                    db, ir["user_id"],
+                    f"Course {cr['code']} average rating {rating} below 2.0.",
+                )
+                actions.append(
+                    f"Warned instructor {ir['user_id']}: low rating on {cr['code']} ({rating})."
+                )
+
     # 3) Student GPA outcomes
     student_rows = db.execute(
         "SELECT * FROM students WHERE terminated=0 AND graduated=0"
@@ -1436,7 +1478,16 @@ def _roll_over_semester(db):
         "WHERE suspended=0 AND terminated=0 AND graduated=0"
     )
 
-    new_sem = sem + 1
+    # The new sequence number must be strictly greater than anything we have
+    # in history. Using `sem + 1` from the *current* state can create collisions
+    # if the registrar jumped back to an earlier semester and then rolled
+    # forward again — the previously-issued sequence numbers would be re-used
+    # with potentially different season/year values, producing duplicate labels
+    # in the history dropdown.
+    max_row = db.execute(
+        "SELECT COALESCE(MAX(semester), 0) AS m FROM semester_history"
+    ).fetchone()
+    new_sem = max(sem + 1, max_row["m"] + 1)
     new_season, new_year = _next_season_year(season, year)
 
     # Lift suspension if the suspended_until threshold has been reached AND fine paid.
@@ -1544,7 +1595,10 @@ def registrar_courses():
             "SELECT student_id FROM enrollments "
             "WHERE course_code=? AND semester=? AND status='enrolled'",
             (c["code"], state["semester"])).fetchall()]
-        d = _course_to_dict(c, rating=_course_rating(db, c["code"]))
+        d = _course_to_dict(
+            c, rating=_course_rating(db, c["code"]),
+            instructor_name=_instructor_name(db, c["instructor_id"]),
+        )
         d["enrolled"] = enrolled_list
         out.append(d)
     return jsonify(out)
@@ -1930,11 +1984,27 @@ def registrar_complaints():
 @app.route("/api/registrar/resolve-complaint", methods=["POST"])
 @auth_required("Registrar")
 def registrar_resolve_complaint():
+    """Resolve a complaint by taking action.
+
+    Spec: "An instructor can complain to the registrars to warn or de-register
+    the student; the registrars must take action: either punish the student
+    accordingly or punish the instructor by one warning."
+
+    Actions:
+    - dismiss: only for student-vs-student or student-vs-instructor complaints;
+      not available for instructor-vs-student complaints (those require action)
+    - punish: issue a warning to the target student (or instructor if student is
+      filing against instructor)
+    - deregister: drop the student from all their enrolled courses this semester
+      (only available when complaint target is a student)
+    - warn_instructor: issue a warning to the filing instructor (only for
+      instructor-vs-student complaints; used when complaint is unjustified)
+    """
     data = request.get_json(silent=True) or {}
     cid = (data.get("complaintId") or "").strip()
-    action = (data.get("action") or "").strip()  # dismiss | punish | warn_instructor
+    action = (data.get("action") or "").strip()
 
-    if action not in ("dismiss", "punish", "warn_instructor"):
+    if action not in ("dismiss", "punish", "deregister", "warn_instructor"):
         return jsonify({"ok": False, "msg": "Unknown action."})
 
     db = get_db()
@@ -1944,18 +2014,45 @@ def registrar_resolve_complaint():
     if c["resolved"]:
         return jsonify({"ok": False, "msg": "Complaint already resolved."})
 
+    # Instructor complaints require mandatory action — must not dismiss
     if c["type"] == "instructor_vs_student" and action == "dismiss":
-        return jsonify({"ok": False, "msg": "Instructor complaints require mandatory action — pick punish or warn_instructor."})
+        return jsonify({
+            "ok": False,
+            "msg": "Instructor complaints require mandatory action — pick punish, deregister, or warn_instructor."
+        })
 
-    if action == "punish":
+    # De-registration only applies to student targets
+    if action == "deregister":
+        # Verify the target is a student
+        target_user = db.execute(
+            "SELECT role FROM users WHERE user_id=?", (c["against_id"],)
+        ).fetchone()
+        if not target_user or target_user["role"] != "Student":
+            return jsonify({
+                "ok": False,
+                "msg": "De-registration only applies when the complaint target is a student."
+            })
+        # Drop student from all enrolled courses this semester
+        state = _state(db)
+        db.execute(
+            "UPDATE enrollments SET status='dropped' "
+            "WHERE student_id=? AND semester=? AND status='enrolled'",
+            (c["against_id"], state["semester"]),
+        )
+        resolution = f"De-registered student {c['against_id']} from all courses"
+    elif action == "punish":
         _issue_warning(db, c["against_id"], f"Complaint {cid}: {c['description'][:80]}")
         resolution = f"Punished {c['against_id']}"
     elif action == "warn_instructor":
         if c["type"] != "instructor_vs_student":
-            return jsonify({"ok": False, "msg": "warn_instructor only applies to instructor complaints."})
+            return jsonify({
+                "ok": False,
+                "msg": "warn_instructor only applies to instructor-vs-student complaints."
+            })
         _issue_warning(db, c["from_id"], f"Unjustified complaint {cid}")
         resolution = f"Warned filer {c['from_id']} (unjustified complaint)"
     else:
+        # action == "dismiss"
         resolution = "Dismissed"
 
     db.execute(
@@ -2402,12 +2499,36 @@ def registrar_get_instructor(uid):
 @auth_required("Registrar")
 def registrar_semesters():
     """Return the list of all known (semester, season, year) values plus the
-    currently active semester id so the registrar can pick from a dropdown."""
+    currently active semester id so the registrar can pick from a dropdown.
+
+    Defensive de-duplication: if any two history rows share the same
+    (season, year) — which can happen with legacy data created before the
+    rollover sequence-number bug was fixed — collapse them to a single entry,
+    preferring the row whose sequence number matches the currently active
+    semester (so the dropdown's "(current)" tag stays accurate), and otherwise
+    the most recent sequence number.
+    """
     db = get_db()
     state = _state(db)
     rows = db.execute(
         "SELECT semester, season, year, closed_at FROM semester_history ORDER BY semester"
     ).fetchall()
+
+    # Group by (season, year), preferring the current semester's row if present
+    by_label = {}
+    for r in rows:
+        key = (r["season"], r["year"])
+        existing = by_label.get(key)
+        prefer = (
+            existing is None
+            or r["semester"] == state["semester"]
+            or (existing["semester"] != state["semester"]
+                and r["semester"] > existing["semester"])
+        )
+        if prefer:
+            by_label[key] = r
+
+    deduped = sorted(by_label.values(), key=lambda r: r["semester"])
     return jsonify({
         "current":  state["semester"],
         "semesters": [{
@@ -2417,7 +2538,7 @@ def registrar_semesters():
             "label":    _semester_label(r["season"], r["year"]),
             "closedAt": r["closed_at"],
             "isCurrent": r["semester"] == state["semester"],
-        } for r in rows],
+        } for r in deduped],
     })
 
 

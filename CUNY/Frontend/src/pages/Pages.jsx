@@ -52,7 +52,7 @@ export function HomePage({ onLogin }) {
       <Table
         headers={['Code', 'Course Name', 'Instructor', 'Time', 'Enrolled', 'Core', 'Rating', 'Status']}
         rows={data.courses.map(c => [
-          c.code, c.name, c.instructorId || '—', c.timeSlot,
+          c.code, c.name, c.instructorName || c.instructorId || '—', c.timeSlot,
           `${c.enrolled}/${c.capacity}`,
           c.isCore ? '★ Core' : '',
           c.rating ? `${c.rating} ★` : '—',
@@ -453,7 +453,7 @@ export function StudentCourses() {
       {data.enrolled.length ? (
         <Table
           headers={['Code', 'Course Name', 'Time Slot', 'Instructor', '']}
-          rows={data.enrolled.map(c => [c.code, c.name, c.timeSlot, c.instructorId || '—',
+          rows={data.enrolled.map(c => [c.code, c.name, c.timeSlot, c.instructorName || c.instructorId || '—',
             data.phase === 'REGISTRATION'
               ? <button key={c.code} className="btn btn-danger btn-sm" onClick={() => drop(c.code)}>Drop</button>
               : '—'
@@ -1218,7 +1218,7 @@ export function RegistrarCourses() {
       <Table
         headers={['Code', 'Name', 'Instructor', 'Time', 'Enrolled', 'Core', 'Prereqs', 'Rating', 'Status', '']}
         rows={courses.map(c => [
-          c.code, c.name, c.instructorId || '⚠ Unassigned', c.timeSlot,
+          c.code, c.name, c.instructorName || c.instructorId || '⚠ Unassigned', c.timeSlot,
           `${c.enrolled.length}/${c.capacity}`,
           c.isCore ? '★' : '',
           (c.prerequisites && c.prerequisites.length) ? c.prerequisites.join(', ') : '—',
