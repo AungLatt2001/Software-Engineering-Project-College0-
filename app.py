@@ -158,6 +158,19 @@ Grade scale: A+/A=4.0, A-=3.67, B+=3.33, B=3.0, B-=2.67, C+=2.33, C=2.0, C-=1.67
 
 GRADUATION REQUIREMENTS: Complete all 8 core courses (CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499), cumulative GPA ≥ 2.0, 0 active warnings, no outstanding fines. Submit application during grading phase.
 
+COURSE TERM AVAILABILITY (courses are only offered in specific semesters):
+- CSC101 Introduction to Computer Science: Fall, Spring
+- CSC201 Data Structures: Fall, Spring
+- CSC301 Database Systems: Fall only
+- CSC401 Software Engineering: Spring only
+- CSC450 Machine Learning: Summer, Fall
+- MTH101 Calculus I: Fall, Spring
+- MTH201 Discrete Mathematics: Fall only
+- MTH301 Linear Algebra: Spring, Summer
+- ENG101 English Composition: Fall, Spring
+- CSC499 Capstone Project: Fall, Spring
+Registrars cannot schedule a course in a semester where it is not offered. This is enforced by the system.
+
 COMPLAINTS: Students→anyone (general). Instructors→students in their class (can request warn or deregister). Registrar resolves: warn student, deregister student, or warn instructor if complaint unfounded.
 
 WAITLIST: Auto-enroll when seat opens, by position order.
@@ -281,6 +294,16 @@ def handle_ai(question, user_id, db):
                 "Go to My Courses to browse available sections and enroll. "
                 "You need at least 2 courses per semester to avoid a warning.", "local")
 
+    if "offered" in q or ("which" in q and "semester" in q) or ("available" in q and ("term" in q or "semester" in q)) or ("term" in q and "course" in q):
+        return ("Courses at College0 are only offered in specific semesters: "
+                "CSC101 & CSC201 (Fall, Spring), CSC301 Database Systems (Fall only), "
+                "CSC401 Software Engineering (Spring only), CSC450 Machine Learning (Summer & Fall), "
+                "MTH101 Calculus I (Fall, Spring), MTH201 Discrete Mathematics (Fall only), "
+                "MTH301 Linear Algebra (Spring & Summer), ENG101 English Composition (Fall, Spring), "
+                "CSC499 Capstone (Fall, Spring). "
+                "The system prevents scheduling a course in a semester it is not offered in. "
+                "Registrars can adjust course term availability from the Registrar dashboard.", "local")
+
     if "core" in q or ("required" in q and "course" in q):
         return ("The 8 required core courses are: CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499. "
                 "All must be completed with passing grades to be eligible for graduation.", "local")
@@ -400,7 +423,7 @@ def api_home():
 
     sections = [dict(r) for r in db.execute("""
         SELECT cs.section_id, cs.schedule_slot, cs.room, cs.capacity, cs.status,
-               c.code, c.title, c.is_core, c.credit_hours,
+               c.code, c.title, c.is_core, c.credit_hours, c.offered_terms,
                u.first_name||' '||u.last_name as instructor_name,
                (SELECT COUNT(*) FROM Enrollment e WHERE e.section_id=cs.section_id
                 AND e.enrollment_status IN ('enrolled','completed')) as enrolled_count
@@ -828,13 +851,98 @@ def api_registrar():
         WHERE s.special_reg_eligible=1
     """).fetchall()]
 
+    courses = [dict(r) for r in db.execute(
+        "SELECT course_id, code, title, credit_hours, is_core, description, offered_terms FROM Course ORDER BY code"
+    ).fetchall()]
+
     db.close()
     return jsonify({
         "students": students, "instructors": instructors,
         "applications": applications, "complaints": complaints,
         "grad_apps": grad_apps, "all_semesters": all_semesters,
         "warnings": warnings, "special_reg_students": special_reg_students,
+        "courses": courses,
     })
+
+@app.route("/api/registrar/course-terms", methods=["POST"])
+def api_course_terms():
+    if session.get("role") != "registrar":
+        return jsonify({"error": "Forbidden"}), 403
+    data      = request.get_json()
+    course_id = int(data.get("course_id", 0))
+    terms     = data.get("offered_terms", "").strip()
+    VALID     = {"Fall", "Spring", "Summer"}
+    parsed    = [t.strip() for t in terms.split(",") if t.strip()]
+    if not parsed or not all(t in VALID for t in parsed):
+        return jsonify({"msg": "Invalid terms. Use Fall, Spring, and/or Summer."}), 400
+    canonical = ",".join(parsed)
+    db = get_db()
+    db.execute("UPDATE Course SET offered_terms=? WHERE course_id=?", (canonical, course_id))
+    db.commit()
+    db.close()
+    return jsonify({"msg": f"Course terms updated to: {canonical}."})
+
+@app.route("/api/registrar/section", methods=["POST"])
+def api_create_section():
+    if session.get("role") != "registrar":
+        return jsonify({"error": "Forbidden"}), 403
+    data          = request.get_json()
+    semester_id   = int(data.get("semester_id", 0))
+    course_id     = int(data.get("course_id", 0))
+    instructor_id = int(data.get("instructor_id", 0))
+    room          = data.get("room", "").strip()
+    schedule_slot = data.get("schedule_slot", "").strip()
+    capacity      = int(data.get("capacity", 30))
+
+    if not all([semester_id, course_id, instructor_id, room, schedule_slot]):
+        return jsonify({"msg": "All fields are required."}), 400
+
+    db = get_db()
+
+    # Validate course is offered in this semester's term
+    sem    = db.execute("SELECT * FROM Semester WHERE semester_id=?", (semester_id,)).fetchone()
+    course = db.execute("SELECT * FROM Course WHERE course_id=?", (course_id,)).fetchone()
+    if not sem or not course:
+        db.close()
+        return jsonify({"msg": "Invalid semester or course."}), 400
+
+    offered = [t.strip() for t in course["offered_terms"].split(",")]
+    if sem["term_name"] not in offered:
+        db.close()
+        return jsonify({
+            "msg": f"{course['code']} is only offered in {course['offered_terms']}. "
+                   f"It cannot be scheduled in {sem['term_name']} {sem['year']}."
+        }), 400
+
+    # Check instructor exists
+    instr = db.execute("SELECT * FROM Instructor WHERE instructor_id=?", (instructor_id,)).fetchone()
+    if not instr:
+        db.close()
+        return jsonify({"msg": "Instructor not found."}), 400
+
+    db.execute(
+        "INSERT INTO ClassSection (semester_id,course_id,instructor_id,room,schedule_slot,capacity,status) VALUES (?,?,?,?,?,?,?)",
+        (semester_id, course_id, instructor_id, room, schedule_slot, capacity, "open")
+    )
+    db.commit()
+    db.close()
+    return jsonify({"msg": f"Section created: {course['code']} in {sem['term_name']} {sem['year']}."})
+
+@app.route("/api/registrar/section/<int:sec_id>", methods=["DELETE"])
+def api_delete_section(sec_id):
+    if session.get("role") != "registrar":
+        return jsonify({"error": "Forbidden"}), 403
+    db = get_db()
+    enrolled = db.execute(
+        "SELECT COUNT(*) as c FROM Enrollment WHERE section_id=? AND enrollment_status='enrolled'", (sec_id,)
+    ).fetchone()["c"]
+    if enrolled > 0:
+        db.close()
+        return jsonify({"msg": "Cannot delete a section with active enrollments."}), 400
+    db.execute("DELETE FROM ClassSection WHERE section_id=?", (sec_id,))
+    db.commit()
+    db.close()
+    return jsonify({"msg": "Section removed."})
 
 @app.route("/api/registrar/phase", methods=["POST"])
 def api_set_phase():

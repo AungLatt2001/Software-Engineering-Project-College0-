@@ -2,6 +2,58 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../App';
 import api from '../api';
 
+const ALL_TERMS = ['Fall', 'Spring', 'Summer'];
+
+const TERM_COLOR = {
+  Fall:   { bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
+  Spring: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
+  Summer: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+};
+
+function TermBadge({ term }) {
+  const c = TERM_COLOR[term] || { bg: '#f3f4f6', color: '#374151', border: '#e5e7eb' };
+  return (
+    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, marginRight: 4,
+      background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+      {term}
+    </span>
+  );
+}
+
+function CourseTermEditor({ course, onSave }) {
+  const [selected, setSelected] = useState(
+    (course.offered_terms || '').split(',').map(t => t.trim()).filter(Boolean)
+  );
+  const [busy, setBusy] = useState(false);
+  const toggle = t => setSelected(s => s.includes(t) ? s.filter(x => x !== t) : [...s, t]);
+  const save = async () => {
+    if (!selected.length) return;
+    setBusy(true);
+    try {
+      await api.post('/registrar/course-terms', { course_id: course.course_id, offered_terms: selected.join(',') });
+      onSave(course.course_id, selected.join(','));
+    } finally { setBusy(false); }
+  };
+  const changed = selected.sort().join() !== (course.offered_terms || '').split(',').map(t => t.trim()).sort().join();
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      {ALL_TERMS.map(t => (
+        <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+          fontSize: '0.75rem', fontWeight: 600,
+          color: selected.includes(t) ? TERM_COLOR[t].color : 'var(--muted)' }}>
+          <input type="checkbox" checked={selected.includes(t)} onChange={() => toggle(t)} style={{ width: 13, height: 13 }} />
+          {t}
+        </label>
+      ))}
+      {changed && (
+        <button className="btn-primary btn-sm" disabled={busy || !selected.length} onClick={save} style={{ padding: '3px 10px', fontSize: '0.72rem' }}>
+          {busy ? '…' : 'Save'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Registrar() {
   const { sem, setSem } = useAuth();
   const [data, setData] = useState(null);
@@ -11,8 +63,36 @@ export default function Registrar() {
   const [triggerResult, setTriggerResult] = useState(null);
   const [complaintNotes, setComplaintNotes] = useState({});
 
+  // Section creation form state
+  const [newSec, setNewSec] = useState({ semester_id: '', course_id: '', instructor_id: '', room: '', schedule_slot: '', capacity: 30 });
+  const [secErr, setSecErr] = useState('');
+  const [secBusy, setSecBusy] = useState(false);
+
   const load = () => api.get('/registrar').then(r => setData(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  const updateCourseTerms = (courseId, terms) => {
+    setData(d => ({ ...d, courses: d.courses.map(c => c.course_id === courseId ? { ...c, offered_terms: terms } : c) }));
+    setMsg(`Course terms updated.`);
+  };
+
+  const createSection = async e => {
+    e.preventDefault();
+    setSecErr(''); setSecBusy(true);
+    try {
+      const r = await api.post('/registrar/section', { ...newSec, semester_id: parseInt(newSec.semester_id), course_id: parseInt(newSec.course_id), instructor_id: parseInt(newSec.instructor_id), capacity: parseInt(newSec.capacity) });
+      setMsg(r.data.msg);
+      setNewSec({ semester_id: '', course_id: '', instructor_id: '', room: '', schedule_slot: '', capacity: 30 });
+      load();
+    } catch (err) { setSecErr(err.response?.data?.msg || 'Error creating section.'); }
+    finally { setSecBusy(false); }
+  };
+
+  // Figure out which terms a course is allowed in for the selected semester
+  const selectedSemTerm = data?.all_semesters?.find(s => s.semester_id === parseInt(newSec.semester_id))?.term_name;
+  const eligibleCourses = selectedSemTerm && data?.courses
+    ? data.courses.filter(c => c.offered_terms.split(',').map(t => t.trim()).includes(selectedSemTerm))
+    : data?.courses || [];
 
   const act = async (url, body) => {
     try {
@@ -86,6 +166,109 @@ export default function Registrar() {
         <div style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--muted)' }}>
           ⚡ Setting phase to <strong>running</strong> will automatically trigger: student warnings (&lt;2 courses), section cancellations (&lt;3 students), instructor warnings/suspensions, and special re-registration grants.
         </div>
+      </div>
+
+      {/* COURSE TERM AVAILABILITY */}
+      <div className="panel">
+        <div className="panel-title">📅 Course Term Availability</div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: 14 }}>
+          Courses are only offered in specific semesters. Tick the checkboxes to update when a course can be scheduled.
+          The system will block section creation if the course is not offered in that semester's term.
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1.5px solid var(--border)' }}>
+              <th style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600, width: 90 }}>Code</th>
+              <th style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600 }}>Title</th>
+              <th style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600, width: 50 }}>Credits</th>
+              <th style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600, width: 50 }}>Core</th>
+              <th style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--muted)', fontWeight: 600 }}>Offered In (editable)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(data.courses || []).map(c => (
+              <tr key={c.course_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '8px 10px', fontWeight: 700 }}>{c.code}</td>
+                <td style={{ padding: '8px 10px' }}>{c.title}</td>
+                <td style={{ padding: '8px 10px', color: 'var(--muted)' }}>{c.credit_hours}</td>
+                <td style={{ padding: '8px 10px' }}>{c.is_core ? <span style={{ color: 'var(--blue-mid)', fontWeight: 700 }}>★</span> : '—'}</td>
+                <td style={{ padding: '8px 10px' }}>
+                  <CourseTermEditor course={c} onSave={updateCourseTerms} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* CREATE NEW SECTION */}
+      <div className="panel">
+        <div className="panel-title">➕ Create New Section</div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: 14 }}>
+          The course list below is automatically filtered to only show courses offered in the selected semester's term.
+        </div>
+        {secErr && <div className="alert alert-error" style={{ marginBottom: 12 }}>{secErr}</div>}
+        <form onSubmit={createSection}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Semester</label>
+              <select className="select-sm" value={newSec.semester_id} onChange={e => setNewSec(s => ({ ...s, semester_id: e.target.value, course_id: '' }))} required>
+                <option value="">Select semester…</option>
+                {data.all_semesters.filter(s => s.phase !== 'closed').map(s => (
+                  <option key={s.semester_id} value={s.semester_id}>{s.term_name} {s.year}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>
+                Course
+                {selectedSemTerm && <span style={{ color: 'var(--muted)', fontWeight: 400, marginLeft: 6 }}>
+                  ({eligibleCourses.length} available in {selectedSemTerm})
+                </span>}
+              </label>
+              <select className="select-sm" value={newSec.course_id} onChange={e => setNewSec(s => ({ ...s, course_id: e.target.value }))} required disabled={!newSec.semester_id}>
+                <option value="">Select course…</option>
+                {eligibleCourses.map(c => (
+                  <option key={c.course_id} value={c.course_id}>{c.code} — {c.title}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Instructor</label>
+              <select className="select-sm" value={newSec.instructor_id} onChange={e => setNewSec(s => ({ ...s, instructor_id: e.target.value }))} required>
+                <option value="">Select instructor…</option>
+                {data.instructors.map(i => (
+                  <option key={i.user_id} value={i.user_id}>{i.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Room</label>
+              <input className="select-sm" value={newSec.room} onChange={e => setNewSec(s => ({ ...s, room: e.target.value }))} placeholder="e.g. Room 201" required />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Schedule</label>
+              <input className="select-sm" value={newSec.schedule_slot} onChange={e => setNewSec(s => ({ ...s, schedule_slot: e.target.value }))} placeholder="e.g. MWF 10:00-11:00" required />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem' }}>Capacity</label>
+              <input type="number" className="select-sm" value={newSec.capacity} onChange={e => setNewSec(s => ({ ...s, capacity: e.target.value }))} min="1" max="200" required />
+            </div>
+          </div>
+          {selectedSemTerm && !newSec.course_id && eligibleCourses.length === 0 && (
+            <div className="alert alert-error" style={{ marginBottom: 10 }}>
+              No courses are configured to be offered in {selectedSemTerm}. Update course term availability above first.
+            </div>
+          )}
+          {selectedSemTerm && newSec.course_id && (
+            <div style={{ fontSize: '0.74rem', color: 'var(--green)', fontWeight: 600, marginBottom: 10 }}>
+              ✓ {data.courses.find(c => c.course_id === parseInt(newSec.course_id))?.code} is offered in {selectedSemTerm}
+            </div>
+          )}
+          <button type="submit" className="btn-primary btn-sm" disabled={secBusy}>
+            {secBusy ? 'Creating…' : 'Create Section'}
+          </button>
+        </form>
       </div>
 
       {/* SPECIAL REG STUDENTS */}

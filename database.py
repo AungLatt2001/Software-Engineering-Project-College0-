@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS Course (
     title        TEXT    NOT NULL,
     credit_hours INTEGER NOT NULL DEFAULT 3,
     is_core      INTEGER NOT NULL DEFAULT 0,
-    description  TEXT
+    description  TEXT,
+    offered_terms TEXT   NOT NULL DEFAULT 'Fall,Spring,Summer'
 );
 
 CREATE TABLE IF NOT EXISTS ClassSection (
@@ -205,12 +206,34 @@ def migrate_db():
         "ALTER TABLE Complaint ADD COLUMN complaint_type TEXT NOT NULL DEFAULT 'general'",
         "ALTER TABLE Complaint ADD COLUMN requested_action TEXT",
         "ALTER TABLE Complaint ADD COLUMN section_id INTEGER",
+        "ALTER TABLE Student ADD COLUMN first_login_required INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE Course ADD COLUMN offered_terms TEXT NOT NULL DEFAULT 'Fall,Spring,Summer'",
     ]
     for sql in migrations:
         try:
             conn.execute(sql)
         except Exception:
             pass
+
+    # Backfill realistic offered_terms for existing courses
+    COURSE_TERMS = {
+        'CSC101': 'Fall,Spring',
+        'CSC201': 'Fall,Spring',
+        'CSC301': 'Fall',
+        'CSC401': 'Spring',
+        'CSC450': 'Summer,Fall',
+        'MTH101': 'Fall,Spring',
+        'MTH201': 'Fall',
+        'MTH301': 'Spring,Summer',
+        'ENG101': 'Fall,Spring',
+        'CSC499': 'Fall,Spring',
+    }
+    for code, terms in COURSE_TERMS.items():
+        try:
+            conn.execute("UPDATE Course SET offered_terms=? WHERE code=?", (terms, code))
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
 
@@ -293,18 +316,18 @@ def init_db():
     )
 
     conn.executemany(
-        "INSERT INTO Course (course_id,code,title,credit_hours,is_core,description) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO Course (course_id,code,title,credit_hours,is_core,description,offered_terms) VALUES (?,?,?,?,?,?,?)",
         [
-            (1, 'CSC101','Introduction to Computer Science',3,1,'Fundamentals of computing and programming.'),
-            (2, 'CSC201','Data Structures',                 3,1,'Arrays, linked lists, trees, graphs, and algorithms.'),
-            (3, 'CSC301','Database Systems',                3,1,'Relational databases, SQL, and E-R modeling.'),
-            (4, 'CSC401','Software Engineering',            3,1,'SDLC, design patterns, and agile methodologies.'),
-            (5, 'CSC450','Machine Learning',                3,0,'Supervised and unsupervised learning techniques.'),
-            (6, 'MTH101','Calculus I',                      4,1,'Limits, derivatives, and integration.'),
-            (7, 'MTH201','Discrete Mathematics',            3,1,'Logic, sets, combinatorics, and graph theory.'),
-            (8, 'MTH301','Linear Algebra',                  3,0,'Vectors, matrices, and linear transformations.'),
-            (9, 'ENG101','English Composition',             3,1,'Academic writing and critical thinking.'),
-            (10,'CSC499','Capstone Project',                3,1,'Culminating project demonstrating program competencies.'),
+            (1, 'CSC101','Introduction to Computer Science',3,1,'Fundamentals of computing and programming.',         'Fall,Spring'),
+            (2, 'CSC201','Data Structures',                 3,1,'Arrays, linked lists, trees, graphs, and algorithms.','Fall,Spring'),
+            (3, 'CSC301','Database Systems',                3,1,'Relational databases, SQL, and E-R modeling.',       'Fall'),
+            (4, 'CSC401','Software Engineering',            3,1,'SDLC, design patterns, and agile methodologies.',    'Spring'),
+            (5, 'CSC450','Machine Learning',                3,0,'Supervised and unsupervised learning techniques.',   'Summer,Fall'),
+            (6, 'MTH101','Calculus I',                      4,1,'Limits, derivatives, and integration.',              'Fall,Spring'),
+            (7, 'MTH201','Discrete Mathematics',            3,1,'Logic, sets, combinatorics, and graph theory.',      'Fall'),
+            (8, 'MTH301','Linear Algebra',                  3,0,'Vectors, matrices, and linear transformations.',     'Spring,Summer'),
+            (9, 'ENG101','English Composition',             3,1,'Academic writing and critical thinking.',            'Fall,Spring'),
+            (10,'CSC499','Capstone Project',                3,1,'Culminating project demonstrating program competencies.','Fall,Spring'),
         ]
     )
 

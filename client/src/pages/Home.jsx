@@ -239,7 +239,8 @@ export default function Home() {
           <thead>
             <tr>
               <th>Code</th><th>Course Title</th><th>Instructor</th>
-              <th>Schedule</th><th>Room</th><th>Enrolled</th><th>Core</th><th>Status</th>
+              <th>Schedule</th><th>Room</th><th>Enrolled</th><th>Core</th>
+              <th>Offered In</th><th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -252,6 +253,18 @@ export default function Home() {
                 <td>{s.room}</td>
                 <td>{s.enrolled_count}/{s.capacity}</td>
                 <td>{s.is_core ? <span className="badge-core">★ Core</span> : '—'}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {(s.offered_terms || '').split(',').map(t => (
+                      <span key={t} style={{
+                        fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                        background: t.trim() === sem?.term_name ? '#dbeafe' : '#f3f4f6',
+                        color: t.trim() === sem?.term_name ? '#1e40af' : '#6b7280',
+                        border: t.trim() === sem?.term_name ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+                      }}>{t.trim()}</span>
+                    ))}
+                  </div>
+                </td>
                 <td>
                   {s.status === 'open' && <span className="badge-status-avail">Open</span>}
                   {s.status === 'full' && <span style={{ color: 'var(--orange)', fontWeight: 600 }}>Full</span>}
