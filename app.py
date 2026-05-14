@@ -3,6 +3,9 @@ from werkzeug.security import check_password_hash
 from database import get_db, init_db
 import sqlite3
 import os
+import json
+import urllib.request
+import urllib.error
 
 app = Flask(__name__, static_folder="client/build", static_url_path="")
 app.secret_key = "collegeo-secret-2024"
@@ -131,76 +134,178 @@ def run_phase_trigger(db, semester_id):
         "details": details,
     }
 
+COLLEGE0_CONTEXT = """
+College0 is an academic management portal (CUNYFirst clone) for CSC32200 final project.
+
+ROLES: student, instructor, registrar.
+SEMESTER PHASES: setup → registration → running → grading → closed.
+- setup: admin configures sections; no enrollment.
+- registration: students enroll/drop courses.
+- running: classes in session. Auto-triggers: cancel sections <3 students, warn students <2 courses, warn/suspend instructors.
+- grading: instructors post grades; students submit reviews.
+- closed: semester archived.
+
+WARNING SYSTEM:
+- Students: warned for <2 courses when running starts, low GPA, or policy violations. 3 warnings = suspended.
+- Instructors: warned when assigned section is cancelled. All sections cancelled = suspended next semester.
+- Registrar can issue manual warnings.
+
+COURSE CANCELLATION: Sections with fewer than 3 enrolled students are cancelled when phase→running.
+Students from cancelled sections get special re-registration (can enroll during running phase).
+
+GPA: cumulative_gpa = average grade_points across all completed courses.
+Grade scale: A+/A=4.0, A-=3.67, B+=3.33, B=3.0, B-=2.67, C+=2.33, C=2.0, C-=1.67, D+=1.33, D=1.0, F=0.0.
+
+GRADUATION REQUIREMENTS: Complete all 8 core courses (CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499), cumulative GPA ≥ 2.0, 0 active warnings, no outstanding fines. Submit application during grading phase.
+
+COMPLAINTS: Students→anyone (general). Instructors→students in their class (can request warn or deregister). Registrar resolves: warn student, deregister student, or warn instructor if complaint unfounded.
+
+WAITLIST: Auto-enroll when seat opens, by position order.
+
+FINES: Must be cleared before enrollment or graduation application.
+
+TUTORIAL: New students see a 7-step interactive tutorial on first login covering all portal features.
+"""
+
+def call_openai_llm(question):
+    """Call OpenAI API as LLM fallback. Returns (answer, True) or (error_msg, False)."""
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        return None, False
+    try:
+        payload = json.dumps({
+            "model": "gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": (
+                    "You are the AI assistant for College0, an academic management portal. "
+                    "Answer student questions about the portal using the context below. "
+                    "Be concise (2-4 sentences). If unsure, say so.\n\n" + COLLEGE0_CONTEXT
+                )},
+                {"role": "user", "content": question}
+            ],
+            "max_tokens": 300,
+            "temperature": 0.4,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            answer = data["choices"][0]["message"]["content"].strip()
+            return answer, True
+    except Exception as e:
+        return None, False
+
 def handle_ai(question, user_id, db):
+    """Returns (answer_text, source) where source is 'local' or 'llm'."""
     q = question.lower()
-    if "graduation" in q and "requirement" in q:
-        return ("To graduate from College0, you must complete all required core courses "
+
+    if "graduation" in q and ("requirement" in q or "eligib" in q):
+        return ("To graduate from College0, you must complete all 8 required core courses "
                 "(CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499), "
                 "maintain a cumulative GPA ≥ 2.0, have 0 active warnings, no outstanding fines, "
-                "and submit a graduation application during the grading phase.")
-    if "warning" in q:
-        return ("Warnings are issued for low GPA, having fewer than 2 courses, or policy violations. "
-                "Each student may accumulate up to 3 warnings before facing suspension. "
-                "Earning an Honor removes one active warning. "
-                "Instructors whose courses are all cancelled will be suspended from teaching next semester.")
-    if "cancel" in q or "fewer than" in q or "minimum" in q:
-        return ("Courses with fewer than 3 enrolled students will be cancelled when the semester moves to Running phase. "
-                "Students in cancelled courses receive a special re-registration opportunity to join another open section. "
-                "The instructor of any cancelled course receives a warning; if all their courses are cancelled, "
-                "they are suspended from teaching next semester.")
-    if "special registration" in q or "special reg" in q:
+                "and submit a graduation application during the Grading phase.", "local")
+
+    if "warning" in q and ("work" in q or "system" in q or "how" in q or "what" in q or "many" in q):
+        return ("Warnings are issued for having fewer than 2 courses when the semester goes Running, "
+                "low GPA, or policy violations. Each student or instructor may accumulate up to 3 warnings "
+                "before being suspended. Earning an Honor removes one active warning.", "local")
+
+    if "cancel" in q or "fewer than" in q or ("minimum" in q and "student" in q):
+        return ("Sections with fewer than 3 enrolled students are cancelled when the semester moves to Running phase. "
+                "Students in cancelled sections get a special re-registration window to join another open section. "
+                "The instructor receives a warning; if all their sections are cancelled they are suspended next semester.", "local")
+
+    if "special registration" in q or "special reg" in q or ("re-reg" in q):
         return ("Special re-registration is granted to students whose courses were cancelled due to low enrollment. "
                 "These students can enroll in other open sections even during the Running phase. "
-                "Check your My Courses page — a banner will appear if you are eligible.")
-    if "phase" in q or "semester" in q:
+                "Check your My Courses page — a banner will appear if you are eligible.", "local")
+
+    if "phase" in q or ("semester" in q and ("what" in q or "how" in q or "stage" in q)):
         return ("Each semester has 5 phases: Setup (admin configures sections), "
-                "Registration (students enroll), Running (classes in session — low-enrollment courses are auto-cancelled), "
+                "Registration (students enroll/drop courses), "
+                "Running (classes in session — low-enrollment courses auto-cancelled, warnings issued), "
                 "Grading (instructors post grades, students submit reviews), "
-                "and Closed (semester archived).")
-    if "review" in q:
+                "and Closed (semester archived).", "local")
+
+    if "review" in q and ("how" in q or "submit" in q or "when" in q or "course" in q):
         return ("Course reviews are anonymous and can only be submitted during the Grading phase. "
-                "Rate your section 1–5 stars and leave optional comments. "
-                "Reviews with inappropriate language may be flagged by the Registrar.")
+                "Rate your section 1–5 stars and leave optional comments. Go to the Reviews & More page to submit.", "local")
+
     if "waitlist" in q:
-        return ("If a section is full, you can join the waitlist. "
-                "You are automatically enrolled when a seat opens up, in order of your waitlist position.")
+        return ("If a section is full, you can join the waitlist from My Courses. "
+                "You will be automatically enrolled when a seat opens up, in order of your waitlist position.", "local")
+
     if "complaint" in q:
         return ("Students can file complaints against any user via the Reviews & More page. "
                 "Instructors can file complaints against students in their classes, requesting a warning or de-registration. "
-                "Registrars must act on instructor complaints by either punishing the student or warning the instructor.")
+                "The Registrar must then take action — either warn/de-register the student, or warn the instructor if the complaint is unfounded.", "local")
+
     if "fine" in q:
-        return ("Outstanding fines must be paid before you can register for new courses or apply for graduation. "
-                "Contact the Registrar's office to resolve any fines.")
+        return ("Outstanding fines must be cleared before you can enroll in courses or apply for graduation. "
+                "Contact the Registrar's office to resolve any fines.", "local")
+
     if "suspend" in q:
-        return ("Student suspension occurs after 3 warnings or a severe violation. "
-                "Instructor suspension (from teaching next semester) occurs when all of their courses are cancelled. "
-                "A suspended student cannot enroll in courses until the suspension is lifted.")
+        return ("Student suspension occurs after accumulating 3 warnings. "
+                "Instructor suspension (from teaching next semester) occurs when all of their course sections are cancelled. "
+                "A suspended student cannot enroll in courses until the suspension is lifted.", "local")
+
     if "gpa" in q:
         if user_id:
             st = db.execute("SELECT cumulative_gpa, semester_gpa FROM Student WHERE student_id=?", (user_id,)).fetchone()
             if st:
                 return (f"Your cumulative GPA is {st['cumulative_gpa']:.3f} and your semester GPA is "
-                        f"{st['semester_gpa']:.3f}. A minimum of 2.0 is required to remain in good standing.")
-        return ("GPA is calculated as the average grade points across all completed courses. "
-                "Grade scale: A/A+ = 4.0, A- = 3.67, B+ = 3.33, B = 3.0, B- = 2.67, "
-                "C+ = 2.33, C = 2.0, D = 1.0, F = 0.0.")
-    if "tutorial" in q or "how to use" in q or "new student" in q:
-        return ("New students see an interactive tutorial when they first log in. "
-                "It covers the Dashboard, My Courses, Transcript, Reviews, and the important academic rules. "
-                "You can always ask me questions here anytime!")
-    if "instructor" in q and "complain" in q:
+                        f"{st['semester_gpa']:.3f}. A minimum of 2.0 is required to remain in good standing.", "local")
+        return ("GPA is the average grade points across all completed courses. "
+                "Scale: A+/A=4.0, A-=3.67, B+=3.33, B=3.0, B-=2.67, C+=2.33, C=2.0, C-=1.67, D+=1.33, D=1.0, F=0.0. "
+                "You need a cumulative GPA of at least 2.0 to remain in good standing.", "local")
+
+    if "tutorial" in q or ("how" in q and "use" in q and "system" in q):
+        return ("New students see a 7-step interactive tutorial on their first login covering the Dashboard, "
+                "My Courses, Transcript, Reviews, academic rules, and course cancellation policies. "
+                "You can always ask me questions here anytime!", "local")
+
+    if ("instructor" in q or "professor" in q) and ("complain" in q or "report" in q):
         return ("Instructors can file complaints against students in their classes from the My Classes page. "
-                "They can request the student be warned or de-registered. "
-                "The Registrar must then take action — either punish the student or warn the instructor.")
-    if "enroll" in q or "register" in q:
-        return ("Course enrollment is only available during the Registration phase, or during a special re-registration period. "
-                "Go to My Courses to browse available sections. You must have at least 2 courses to avoid a warning.")
-    if "core" in q or "required" in q:
-        return ("Core (required) courses: CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499. "
-                "All must be completed to apply for graduation.")
-    return ("I can answer questions about College0. Try asking about graduation requirements, "
-            "GPA, semester phases, course cancellation rules, special registration, "
-            "warnings, complaints, or the tutorial.")
+                "They can request the student be warned or de-registered from the course. "
+                "The Registrar must review and either act on the complaint or warn the instructor if it's unfounded.", "local")
+
+    if "enroll" in q or "register" in q or "sign up" in q or "add course" in q:
+        return ("Course enrollment is available during the Registration phase (or special re-registration during Running phase). "
+                "Go to My Courses to browse available sections and enroll. "
+                "You need at least 2 courses per semester to avoid a warning.", "local")
+
+    if "core" in q or ("required" in q and "course" in q):
+        return ("The 8 required core courses are: CSC101, CSC201, CSC301, CSC401, MTH101, MTH201, ENG101, CSC499. "
+                "All must be completed with passing grades to be eligible for graduation.", "local")
+
+    if "honor" in q:
+        return ("Honors are awarded for outstanding academic performance (typically a semester GPA of 3.5 or higher). "
+                "Each honor earned removes one active warning from your record.", "local")
+
+    if "drop" in q and "course" in q:
+        return ("You can drop a course during the Registration phase by visiting My Courses and clicking Drop. "
+                "Dropping courses during other phases is not permitted.", "local")
+
+    if "instructor" in q and ("grade" in q or "grades" in q or "post" in q):
+        return ("Instructors can post and update student grades from the My Classes page during the Running and Grading phases. "
+                "Select a letter grade (A+ through F) from the dropdown next to each student and click Save.", "local")
+
+    # ── LLM fallback ──────────────────────────────────────────────────────────
+    llm_answer, success = call_openai_llm(question)
+    if success:
+        return llm_answer, "llm"
+
+    # No LLM configured — generic help
+    return ("I can answer questions about College0 policies. Try asking about: "
+            "graduation requirements, GPA, semester phases, course cancellation, "
+            "special registration, warnings, complaints, fines, waitlist, or reviews.", "local")
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
 
@@ -536,12 +641,12 @@ def api_ai():
     question = (data.get("question") or "").strip()
     uid      = session.get("user_id")
     db       = get_db()
-    answer   = handle_ai(question, uid, db)
+    answer, source = handle_ai(question, uid, db)
     db.execute("INSERT INTO AIQuery (user_id,question_text,answer_text,answer_source) VALUES (?,?,?,?)",
-               (uid, question, answer, "vectordb"))
+               (uid, question, answer, source))
     db.commit()
     db.close()
-    return jsonify({"answer": answer})
+    return jsonify({"answer": answer, "source": source})
 
 # ─── Instructor ──────────────────────────────────────────────────────────────
 

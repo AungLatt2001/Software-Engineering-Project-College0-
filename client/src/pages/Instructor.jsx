@@ -187,7 +187,7 @@ export default function Instructor() {
               <tr>
                 <th>Student ID</th><th>Name</th><th>Cum. GPA</th><th>Warnings</th>
                 <th>Status</th><th>Grade</th>
-                {sem?.phase === 'grading' && <th>Assign Grade</th>}
+                {['running','grading'].includes(sem?.phase) && <th>Assign Grade</th>}
                 <th>Actions</th>
               </tr>
             </thead>
@@ -205,7 +205,7 @@ export default function Instructor() {
                   </td>
                   <td>{s.enrollment_status}</td>
                   <td>{s.letter_grade || '—'}</td>
-                  {sem?.phase === 'grading' && (
+                  {['running','grading'].includes(sem?.phase) && (
                     <td>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <select
