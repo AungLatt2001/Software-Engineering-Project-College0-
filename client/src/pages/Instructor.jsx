@@ -107,7 +107,7 @@ function ComplaintModal({ student, sectionId, onClose, onSubmit }) {
               <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Describe the issue in detail..." style={{ minHeight: 100 }} required />
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: 14 }}>
-              Note: The Registrar will review this complaint and may either take the requested action against the student, or issue a warning to you if the complaint is deemed unfounded.
+              The Registrar will review this and may either take action against the student or warn you if the complaint is unfounded.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="submit" className="btn-primary" disabled={busy}>Submit Complaint</button>
@@ -120,6 +120,14 @@ function ComplaintModal({ student, sectionId, onClose, onSubmit }) {
   );
 }
 
+const PHASE_COLORS = {
+  grading:      { bg: '#f0fdf4', color: '#166534', border: '#bbf7d0' },
+  running:      { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe' },
+  registration: { bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
+  setup:        { bg: '#f3f4f6', color: '#374151', border: '#e5e7eb' },
+  closed:       { bg: '#f3f4f6', color: '#9ca3af', border: '#e5e7eb' },
+};
+
 export default function Instructor() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
@@ -130,10 +138,6 @@ export default function Instructor() {
 
   const load = () => api.get('/instructor').then(r => setData(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
-
-  // Use the semester returned by the instructor API — not the global context.
-  // The active semester in context may differ from the one the instructor's sections belong to.
-  const sem = data?.sem;
 
   const saveGrade = async (enrollmentId) => {
     const grade = grades[enrollmentId];
@@ -146,6 +150,8 @@ export default function Instructor() {
   };
 
   if (!data) return <div className="loading">Loading…</div>;
+
+  const canGrade = (phase) => ['running', 'grading'].includes(phase);
 
   return (
     <>
@@ -161,7 +167,7 @@ export default function Instructor() {
 
       <div className="page-header">
         <h1>My Classes</h1>
-        <p>{user?.first_name} {user?.last_name} · Instructor · {sem?.term_name} {sem?.year}</p>
+        <p>{user?.first_name} {user?.last_name} · Instructor</p>
         {data.instructor?.suspension_next_semester === 1 && (
           <div className="alert alert-error" style={{ marginTop: 12 }}>
             ⚠ Your teaching privileges are suspended for the next semester due to all assigned courses being cancelled.
@@ -169,81 +175,124 @@ export default function Instructor() {
         )}
       </div>
 
-      {msg && <div className="alert alert-success">{msg}</div>}
+      {msg && <div className="alert alert-success" style={{ marginBottom: 16 }}>{msg}</div>}
 
-      {data.sections_data.length === 0 && (
-        <div className="alert alert-info">You are not assigned to any sections this semester.</div>
+      {data.semesters_data.length === 0 && (
+        <div className="alert alert-info">You are not assigned to any active sections.</div>
       )}
 
-      {data.sections_data.map(sd => (
-        <div className="table-wrap" key={sd.section.section_id} style={{ marginBottom: 28 }}>
-          <div className="table-title">
-            {sd.section.code} — {sd.section.title}
-            {sd.section.status === 'cancelled' && (
-              <span style={{ marginLeft: 10, fontSize: '0.75rem', background: 'var(--red)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>CANCELLED</span>
-            )}
-            <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 400, marginLeft: 12 }}>
-              {sd.section.schedule_slot} · {sd.section.room} · {sd.section.enrolled_count}/{sd.section.capacity} enrolled
-            </span>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Student ID</th><th>Name</th><th>Cum. GPA</th><th>Warnings</th>
-                <th>Status</th><th>Grade</th>
-                {['running','grading'].includes(sem?.phase) && <th>Assign Grade</th>}
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sd.students.length === 0 && (
-                <tr><td colSpan={8} style={{ color: 'var(--muted)', padding: 16 }}>No students enrolled.</td></tr>
+      {data.semesters_data.map(({ sem, sections_data }) => {
+        const phaseStyle = PHASE_COLORS[sem.phase] || PHASE_COLORS.closed;
+        return (
+          <div key={sem.semester_id} style={{ marginBottom: 36 }}>
+            {/* Semester header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14,
+              paddingBottom: 10, borderBottom: '2px solid var(--border)'
+            }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700 }}>
+                {sem.term_name} {sem.year}
+              </h2>
+              <span style={{
+                fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                background: phaseStyle.bg, color: phaseStyle.color,
+                border: `1px solid ${phaseStyle.border}`, textTransform: 'uppercase', letterSpacing: '0.5px'
+              }}>
+                {sem.phase}
+              </span>
+              {canGrade(sem.phase) && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--green)', fontWeight: 600 }}>
+                  ✓ Grade entry available
+                </span>
               )}
-              {sd.students.map(s => (
-                <tr key={s.student_id}>
-                  <td>#{s.student_id}</td>
-                  <td>{s.name}</td>
-                  <td style={{ color: 'var(--green)', fontWeight: 600 }}>{Number(s.cumulative_gpa || 0).toFixed(3)}</td>
-                  <td style={{ color: s.warning_count > 0 ? 'var(--orange)' : undefined, fontWeight: s.warning_count > 0 ? 600 : undefined }}>
-                    {s.warning_count}/3
-                  </td>
-                  <td>{s.enrollment_status}</td>
-                  <td>{s.letter_grade || '—'}</td>
-                  {['running','grading'].includes(sem?.phase) && (
-                    <td>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <select
-                          className="grade-select"
-                          value={grades[s.enrollment_id] ?? (s.letter_grade || '')}
-                          onChange={e => setGrades(g => ({ ...g, [s.enrollment_id]: e.target.value }))}
-                        >
-                          <option value="">— Select —</option>
-                          {['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F'].map(g => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
-                        <button className="btn-primary btn-sm" onClick={() => saveGrade(s.enrollment_id)}>Save</button>
-                      </div>
-                    </td>
+            </div>
+
+            {sections_data.length === 0 && (
+              <div className="alert alert-info">No sections this semester.</div>
+            )}
+
+            {sections_data.map(sd => (
+              <div className="table-wrap" key={sd.section.section_id} style={{ marginBottom: 22 }}>
+                <div className="table-title">
+                  {sd.section.code} — {sd.section.title}
+                  {sd.section.status === 'cancelled' && (
+                    <span style={{ marginLeft: 10, fontSize: '0.72rem', background: 'var(--red)', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>CANCELLED</span>
                   )}
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn-secondary btn-sm" onClick={() => setViewStudent(s)}>Records</button>
-                      <button
-                        className="btn-sm"
-                        style={{ background: '#fee2e2', color: 'var(--red)', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                        onClick={() => setComplaintTarget({ student: s, sectionId: sd.section.section_id })}
-                      >
-                        Complain
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+                  <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 400, marginLeft: 12 }}>
+                    {sd.section.schedule_slot} · {sd.section.room} · {sd.section.enrolled_count}/{sd.section.capacity} enrolled
+                  </span>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Cum. GPA</th>
+                      <th>Warnings</th>
+                      <th>Status</th>
+                      <th>Current Grade</th>
+                      {canGrade(sem.phase) && <th>Assign Grade</th>}
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sd.students.length === 0 && (
+                      <tr><td colSpan={canGrade(sem.phase) ? 7 : 6} style={{ color: 'var(--muted)', padding: 16 }}>No students enrolled.</td></tr>
+                    )}
+                    {sd.students.map(s => (
+                      <tr key={s.student_id}>
+                        <td><strong>{s.name}</strong></td>
+                        <td style={{ color: 'var(--green)', fontWeight: 600 }}>{Number(s.cumulative_gpa || 0).toFixed(3)}</td>
+                        <td style={{ color: s.warning_count > 0 ? 'var(--orange)' : undefined, fontWeight: s.warning_count > 0 ? 600 : undefined }}>
+                          {s.warning_count}/3
+                        </td>
+                        <td style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{s.enrollment_status}</td>
+                        <td style={{ fontWeight: 700, color: s.letter_grade ? 'var(--blue)' : 'var(--muted)' }}>
+                          {s.letter_grade || '—'}
+                        </td>
+                        {canGrade(sem.phase) && (
+                          <td>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <select
+                                className="grade-select"
+                                value={grades[s.enrollment_id] ?? (s.letter_grade || '')}
+                                onChange={e => setGrades(g => ({ ...g, [s.enrollment_id]: e.target.value }))}
+                              >
+                                <option value="">— Select —</option>
+                                {['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F'].map(g => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))}
+                              </select>
+                              <button
+                                className="btn-primary btn-sm"
+                                disabled={!grades[s.enrollment_id]}
+                                onClick={() => saveGrade(s.enrollment_id)}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn-secondary btn-sm" onClick={() => setViewStudent(s)}>Records</button>
+                            <button
+                              className="btn-sm"
+                              style={{ background: '#fee2e2', color: 'var(--red)', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                              onClick={() => setComplaintTarget({ student: s, sectionId: sd.section.section_id })}
+                            >
+                              Complain
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </>
   );
 }

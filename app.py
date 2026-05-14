@@ -656,50 +656,62 @@ def api_instructor():
         return jsonify({"error": "Forbidden"}), 403
     uid = session["user_id"]
     db  = get_db()
-    sem = get_active_semester(db)
     instr = dict(db.execute("SELECT * FROM Instructor WHERE instructor_id=?", (uid,)).fetchone())
 
-    my_sections = db.execute("""
-        SELECT cs.section_id, cs.schedule_slot, cs.room, cs.capacity, cs.status,
-               c.code, c.title, c.credit_hours,
-               (SELECT COUNT(*) FROM Enrollment e WHERE e.section_id=cs.section_id
-                AND e.enrollment_status IN ('enrolled','completed')) as enrolled_count
-        FROM ClassSection cs JOIN Course c ON cs.course_id=c.course_id
-        WHERE cs.instructor_id=? AND cs.semester_id=? ORDER BY c.code
-    """, (uid, sem["semester_id"])).fetchall()
+    # Load ALL non-closed semesters where this instructor has sections
+    # so grading semesters are never hidden by a newer registration semester
+    all_sems = db.execute("""
+        SELECT DISTINCT s.*
+        FROM Semester s
+        JOIN ClassSection cs ON cs.semester_id=s.semester_id
+        WHERE cs.instructor_id=? AND s.phase != 'closed'
+        ORDER BY s.semester_id DESC
+    """, (uid,)).fetchall()
 
-    sections_data = []
-    for sec in my_sections:
-        students = [dict(r) for r in db.execute("""
-            SELECT e.enrollment_id, e.student_id, e.enrollment_status,
-                   u.first_name||' '||u.last_name as name,
-                   u.warning_count, st.cumulative_gpa, st.semester_gpa, st.honor_count,
-                   gr.letter_grade, gr.grade_points
-            FROM Enrollment e
-            JOIN User u ON e.student_id=u.user_id
-            JOIN Student st ON e.student_id=st.student_id
-            LEFT JOIN GradeRecord gr ON gr.enrollment_id=e.enrollment_id
-            WHERE e.section_id=? AND e.enrollment_status IN ('enrolled','completed')
-            ORDER BY u.last_name
-        """, (sec["section_id"],)).fetchall()]
+    semesters_data = []
+    for sem in all_sems:
+        my_sections = db.execute("""
+            SELECT cs.section_id, cs.schedule_slot, cs.room, cs.capacity, cs.status,
+                   c.code, c.title, c.credit_hours,
+                   (SELECT COUNT(*) FROM Enrollment e WHERE e.section_id=cs.section_id
+                    AND e.enrollment_status IN ('enrolled','completed')) as enrolled_count
+            FROM ClassSection cs JOIN Course c ON cs.course_id=c.course_id
+            WHERE cs.instructor_id=? AND cs.semester_id=? ORDER BY c.code
+        """, (uid, sem["semester_id"])).fetchall()
 
-        # Attach full grade history for each student
-        for s in students:
-            s["grade_history"] = [dict(r) for r in db.execute("""
-                SELECT c.code, c.title, gr.letter_grade, s2.term_name, s2.year
-                FROM GradeRecord gr
-                JOIN Enrollment e2 ON gr.enrollment_id=e2.enrollment_id
-                JOIN ClassSection cs2 ON e2.section_id=cs2.section_id
-                JOIN Course c ON cs2.course_id=c.course_id
-                JOIN Semester s2 ON cs2.semester_id=s2.semester_id
-                WHERE e2.student_id=?
-                ORDER BY s2.semester_id, c.code
-            """, (s["student_id"],)).fetchall()]
+        sections_data = []
+        for sec in my_sections:
+            students = [dict(r) for r in db.execute("""
+                SELECT e.enrollment_id, e.student_id, e.enrollment_status,
+                       u.first_name||' '||u.last_name as name,
+                       u.warning_count, st.cumulative_gpa, st.semester_gpa, st.honor_count,
+                       gr.letter_grade, gr.grade_points
+                FROM Enrollment e
+                JOIN User u ON e.student_id=u.user_id
+                JOIN Student st ON e.student_id=st.student_id
+                LEFT JOIN GradeRecord gr ON gr.enrollment_id=e.enrollment_id
+                WHERE e.section_id=? AND e.enrollment_status IN ('enrolled','completed')
+                ORDER BY u.last_name
+            """, (sec["section_id"],)).fetchall()]
 
-        sections_data.append({"section": dict(sec), "students": students})
+            for s in students:
+                s["grade_history"] = [dict(r) for r in db.execute("""
+                    SELECT c.code, c.title, gr.letter_grade, s2.term_name, s2.year
+                    FROM GradeRecord gr
+                    JOIN Enrollment e2 ON gr.enrollment_id=e2.enrollment_id
+                    JOIN ClassSection cs2 ON e2.section_id=cs2.section_id
+                    JOIN Course c ON cs2.course_id=c.course_id
+                    JOIN Semester s2 ON cs2.semester_id=s2.semester_id
+                    WHERE e2.student_id=?
+                    ORDER BY s2.semester_id, c.code
+                """, (s["student_id"],)).fetchall()]
+
+            sections_data.append({"section": dict(sec), "students": students})
+
+        semesters_data.append({"sem": sem_dict(sem), "sections_data": sections_data})
 
     db.close()
-    return jsonify({"sections_data": sections_data, "instructor": instr, "sem": sem_dict(sem)})
+    return jsonify({"semesters_data": semesters_data, "instructor": instr})
 
 @app.route("/api/instructor/grade", methods=["POST"])
 def api_grade():
