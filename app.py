@@ -6,6 +6,7 @@ import os
 import json
 import urllib.request
 import urllib.error
+from google import genai
 
 app = Flask(__name__, static_folder=None)
 app.secret_key = "collegeo-secret-2024"
@@ -180,39 +181,29 @@ FINES: Must be cleared before enrollment or graduation application.
 TUTORIAL: New students see a 7-step interactive tutorial on first login covering all portal features.
 """
 
-def call_openai_llm(question):
-    """Call OpenAI API as LLM fallback. Returns (answer, True) or (error_msg, False)."""
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
-        return None, False
+def call_gemini_llm(question):
+    """Call Gemini via Replit AI integrations as LLM fallback. Returns (answer, True) or (None, False)."""
     try:
-        payload = json.dumps({
-            "model": "gpt-4o-mini",
-            "messages": [
-                {"role": "system", "content": (
-                    "You are the AI assistant for College0, an academic management portal. "
-                    "Answer student questions about the portal using the context below. "
-                    "Be concise (2-4 sentences). If unsure, say so.\n\n" + COLLEGE0_CONTEXT
-                )},
-                {"role": "user", "content": question}
-            ],
-            "max_tokens": 300,
-            "temperature": 0.4,
-        }).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-            method="POST",
+        api_key  = os.environ.get("AI_INTEGRATIONS_GEMINI_API_KEY", "")
+        base_url = os.environ.get("AI_INTEGRATIONS_GEMINI_BASE_URL", "")
+        if not api_key or not base_url:
+            return None, False
+        client = genai.Client(
+            api_key=api_key,
+            http_options={"base_url": base_url, "api_version": ""}
         )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            answer = data["choices"][0]["message"]["content"].strip()
-            return answer, True
-    except Exception as e:
+        prompt = (
+            "You are a helpful AI assistant. Answer the user's question concisely and accurately "
+            "(2-4 sentences). If you are unsure, say so honestly.\n\n"
+            f"Question: {question}"
+        )
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt,
+        )
+        answer = response.text.strip()
+        return answer, True
+    except Exception:
         return None, False
 
 def handle_ai(question, user_id, db):
@@ -320,12 +311,12 @@ def handle_ai(question, user_id, db):
         return ("Instructors can post and update student grades from the My Classes page during the Running and Grading phases. "
                 "Select a letter grade (A+ through F) from the dropdown next to each student and click Save.", "local")
 
-    # ── LLM fallback ──────────────────────────────────────────────────────────
-    llm_answer, success = call_openai_llm(question)
+    # ── LLM fallback (Gemini via Replit AI integrations) ─────────────────────
+    llm_answer, success = call_gemini_llm(question)
     if success:
         return llm_answer, "llm"
 
-    # No LLM configured — generic help
+    # LLM unavailable — generic help
     return ("I can answer questions about College0 policies. Try asking about: "
             "graduation requirements, GPA, semester phases, course cancellation, "
             "special registration, warnings, complaints, fines, waitlist, or reviews.", "local")
