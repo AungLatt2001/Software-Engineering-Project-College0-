@@ -1,0 +1,31 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.104.66:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [14/May/2026 22:26:11] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:11] "GET /static/js/main.d57851c2.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:11] "GET /static/css/main.d303648e.css HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:11] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:11] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:14] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:14] "GET /static/css/main.d303648e.css HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:14] "GET /static/js/main.d57851c2.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:14] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:14] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:42] "POST /api/logout HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:42] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:42] "[36mGET /static/css/main.d303648e.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:42] "[36mGET /static/js/main.d57851c2.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:42] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:42] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:46] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:46] "[36mGET /static/css/main.d303648e.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:46] "[36mGET /static/js/main.d57851c2.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:26:46] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:46] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:56] "POST /api/login HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:26:56] "GET /api/instructor HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:27:24] "GET /api/home HTTP/1.1" 200 -

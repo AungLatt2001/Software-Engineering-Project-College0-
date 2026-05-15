@@ -64,12 +64,12 @@ function Message({ msg }) {
         </div>
         {msg.source === 'llm' && (
           <div style={{
-            marginTop: 7, padding: '8px 12px', background: '#fff5f5',
-            border: '1px solid #fca5a5', borderRadius: 8,
-            fontSize: '0.74rem', color: '#991b1b', lineHeight: 1.5,
+            marginTop: 7, padding: '8px 12px', background: '#fffbeb',
+            border: '1px solid #fcd34d', borderRadius: 8,
+            fontSize: '0.74rem', color: '#92400e', lineHeight: 1.5,
             display: 'flex', gap: 7, alignItems: 'flex-start'
           }}>
-            <span style={{ flexShrink: 0 }}>⊘</span>
+            <span style={{ flexShrink: 0 }}>⚠</span>
             <span>
               No matching information was found in College0's local knowledge store, so this answer
               comes from the general LLM. It may be inaccurate or hallucinated — verify important

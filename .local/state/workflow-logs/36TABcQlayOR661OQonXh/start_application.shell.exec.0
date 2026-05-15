@@ -1,0 +1,43 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.104.66:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [14/May/2026 22:36:05] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:05] "GET /static/css/main.2a27f89f.css HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:05] "GET /static/js/main.55c07232.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:05] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:05] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:08] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:08] "GET /static/css/main.2a27f89f.css HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:08] "GET /static/js/main.55c07232.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:08] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:08] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:13] "GET /apply HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:13] "[36mGET /static/css/main.2a27f89f.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:13] "[36mGET /static/js/main.55c07232.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:13] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:41] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:41] "[36mGET /static/js/main.55c07232.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:41] "[36mGET /static/css/main.2a27f89f.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:41] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:41] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:44] "GET /api/instructor HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:49] "POST /api/logout HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:49] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:49] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:49] "[36mGET /static/css/main.2a27f89f.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:49] "[36mGET /static/js/main.55c07232.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [14/May/2026 22:36:49] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:49] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:36:51] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:37:27] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:37:36] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:37:49] "GET /apply HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:37:49] "GET /static/js/main.55c07232.js HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:37:49] "GET /static/css/main.2a27f89f.css HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:37:50] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:39:40] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [14/May/2026 22:40:10] "POST /api/ai HTTP/1.1" 200 -

@@ -1,0 +1,32 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.112.98:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [15/May/2026 01:06:14] "[36mGET / HTTP/1.1[0m" 304 -
+127.0.0.1 - - [15/May/2026 01:06:14] "[36mGET /static/css/main.4a3710e8.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [15/May/2026 01:06:14] "[36mGET /static/js/main.40c5aac7.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [15/May/2026 01:06:14] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:14] "GET /api/home HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:22] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:29] "GET /ai-assistant HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:34] "GET /static/js/main.40c5aac7.js HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:34] "GET /static/css/main.4a3710e8.css HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:34] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:06:34] "GET /favicon.ico HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:07] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:40] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:47] "GET /ai-assistant HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:47] "GET /static/js/main.40c5aac7.js HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:47] "GET /static/css/main.4a3710e8.css HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:48] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:07:51] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:08:16] "GET /ai-assistant HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:08:16] "[36mGET /static/css/main.4a3710e8.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [15/May/2026 01:08:16] "[36mGET /static/js/main.40c5aac7.js HTTP/1.1[0m" 304 -
+127.0.0.1 - - [15/May/2026 01:08:16] "GET /api/me HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:08:18] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:08:20] "POST /api/ai HTTP/1.1" 200 -
+127.0.0.1 - - [15/May/2026 01:08:26] "POST /api/ai HTTP/1.1" 200 -
