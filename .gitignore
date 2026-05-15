@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+college0.db
+.DS_Store
+.vscode/
+cuny_*.html
+cuny_results_1_files/
+cuny_results_2_files/
